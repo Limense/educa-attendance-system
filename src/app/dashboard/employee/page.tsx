@@ -1,9 +1,9 @@
 'use client';
 
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import { useRouter } from 'next/navigation';
 import { createSupabaseClient } from '@/lib/supabase/client';
-import { Employee } from '@/types/database';
+import type { Employee, Attendance } from '@/types/database';
 
 export default function EmployeeDashboard() {
   const router = useRouter();
@@ -11,22 +11,11 @@ export default function EmployeeDashboard() {
   const [loading, setLoading] = useState(true);
   const [checkingIn, setCheckingIn] = useState(false);
   const [currentTime, setCurrentTime] = useState(new Date());
-  const [todayAttendance, setTodayAttendance] = useState<any>(null);
+  const [todayAttendance, setTodayAttendance] = useState<Attendance | null>(null);
+  const [message, setMessage] = useState<string>('');
 
-  useEffect(() => {
-    const timer = setInterval(() => {
-      setCurrentTime(new Date());
-    }, 1000);
-
-    return () => clearInterval(timer);
-  }, []);
-
-  useEffect(() => {
-    loadEmployeeData();
-    loadTodayAttendance();
-  }, []);
-
-  const loadEmployeeData = async () => {
+  // Función para cargar datos del empleado
+  const loadEmployeeData = useCallback(async () => {
     try {
       const supabase = createSupabaseClient();
       const { data: { user } } = await supabase.auth.getUser();
@@ -41,7 +30,8 @@ export default function EmployeeDashboard() {
         .select(`
           *,
           department:departments(name),
-          position:positions(title)
+          position:positions(title),
+          organization:organizations(name)
         `)
         .eq('email', user.email)
         .single();
@@ -53,80 +43,121 @@ export default function EmployeeDashboard() {
       }
 
       setEmployee(employeeData);
+      console.log('Employee data loaded:', employeeData);
     } catch (error) {
       console.error('Error:', error);
     } finally {
       setLoading(false);
     }
-  };
+  }, [router]);
 
-  const loadTodayAttendance = async () => {
+  // Función para cargar asistencia del día
+  const loadTodayAttendance = useCallback(async () => {
+    if (!employee?.id || !employee?.organization_id) return;
+    
     try {
       const supabase = createSupabaseClient();
       const today = new Date().toISOString().split('T')[0];
       
-      const { data } = await supabase
+      const { data, error } = await supabase
         .from('attendances')
         .select('*')
-        .eq('employee_id', employee?.id)
-        .eq('date', today)
+        .eq('organization_id', employee.organization_id)
+        .eq('employee_id', employee.id)
+        .eq('attendance_date', today)
         .single();
+
+      if (error && error.code !== 'PGRST116') {
+        console.error('Error loading attendance:', error);
+        return;
+      }
 
       setTodayAttendance(data);
     } catch (error) {
       console.error('Error loading attendance:', error);
     }
-  };
+  }, [employee]);
 
-  const handleCheckIn = async () => {
-    if (!employee) return;
+  useEffect(() => {
+    const timer = setInterval(() => {
+      setCurrentTime(new Date());
+    }, 1000);
+
+    return () => clearInterval(timer);
+  }, []);
+
+  useEffect(() => {
+    loadEmployeeData();
+  }, [loadEmployeeData]);
+
+  useEffect(() => {
+    if (employee) {
+      loadTodayAttendance();
+    }
+  }, [employee, loadTodayAttendance]);
+
+  const handleCheckIn = useCallback(async () => {
+    if (!employee?.id || !employee?.organization_id) {
+      setMessage('❌ Error: Datos del empleado incompletos');
+      return;
+    }
     
     setCheckingIn(true);
     try {
       const supabase = createSupabaseClient();
       const now = new Date();
       const today = now.toISOString().split('T')[0];
-      const time = now.toTimeString().split(' ')[0];
+
+      // Datos según el schema de attendances
+      const insertData = {
+        organization_id: employee.organization_id,
+        employee_id: employee.id,
+        attendance_date: today,
+        check_in_time: now.toISOString(),
+        status: 'present'
+      };
+
+      console.log('Intentando check-in con:', insertData);
 
       const { data, error } = await supabase
         .from('attendances')
-        .insert({
-          employee_id: employee.id,
-          organization_id: employee.organization_id,
-          date: today,
-          check_in_time: time,
-          status: 'present'
-        })
+        .insert(insertData)
         .select()
         .single();
 
       if (error) {
-        throw error;
+        console.error('Error en check-in:', error);
+        throw new Error(error.message || 'Error al registrar entrada');
       }
 
+      console.log('Check-in exitoso:', data);
       setTodayAttendance(data);
-      alert('¡Check-in registrado exitosamente!');
+      setMessage('✅ Entrada registrada exitosamente');
+      setTimeout(() => setMessage(''), 3000);
     } catch (error) {
       console.error('Error en check-in:', error);
-      alert('Error al registrar check-in');
+      const errorMessage = error instanceof Error ? error.message : 'Error desconocido al registrar entrada';
+      setMessage(`❌ ${errorMessage}`);
+      setTimeout(() => setMessage(''), 5000);
     } finally {
       setCheckingIn(false);
     }
-  };
+  }, [employee]);
 
-  const handleCheckOut = async () => {
-    if (!employee || !todayAttendance) return;
+  const handleCheckOut = useCallback(async () => {
+    if (!employee?.id || !todayAttendance) return;
     
     setCheckingIn(true);
     try {
       const supabase = createSupabaseClient();
       const now = new Date();
-      const time = now.toTimeString().split(' ')[0];
+      const time = now.toISOString();
 
       const { data, error } = await supabase
         .from('attendances')
         .update({
-          check_out_time: time
+          check_out_time: time,
+          updated_at: time
         })
         .eq('id', todayAttendance.id)
         .select()
@@ -137,21 +168,23 @@ export default function EmployeeDashboard() {
       }
 
       setTodayAttendance(data);
-      alert('¡Check-out registrado exitosamente!');
+      setMessage('✅ Salida registrada exitosamente');
+      setTimeout(() => setMessage(''), 3000);
     } catch (error) {
       console.error('Error en check-out:', error);
-      alert('Error al registrar check-out');
+      setMessage('❌ Error al registrar salida');
+      setTimeout(() => setMessage(''), 5000);
     } finally {
       setCheckingIn(false);
     }
-  };
+  }, [employee, todayAttendance]);
 
-  const handleLogout = async () => {
+  const handleLogout = useCallback(async () => {
     const supabase = createSupabaseClient();
     await supabase.auth.signOut();
     localStorage.removeItem('currentEmployee');
     router.push('/auth/login');
-  };
+  }, [router]);
 
   if (loading) {
     return (
@@ -190,6 +223,17 @@ export default function EmployeeDashboard() {
           </div>
         </div>
       </header>
+
+      {/* Área de mensajes */}
+      {message && (
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-4">
+          <div className={`p-4 rounded-lg ${
+            message.includes('✅') ? 'bg-green-100 text-green-800' : 'bg-red-100 text-red-800'
+          }`}>
+            {message}
+          </div>
+        </div>
+      )}
 
       <main className="max-w-7xl mx-auto py-6 sm:px-6 lg:px-8">
         <div className="px-4 py-6 sm:px-0">

@@ -15,6 +15,39 @@ export interface BaseEntity {
   updated_at: string
 }
 
+// =============================================
+// INTERFACES PARA AUTENTICACIÓN Y API
+// =============================================
+
+/**
+ * Interface para credenciales de login
+ */
+export interface LoginCredentials {
+  email: string;
+  password: string;
+}
+
+/**
+ * Interface para respuesta de autenticación
+ */
+export interface AuthResponse {
+  success: boolean;
+  employee?: Employee;
+  error?: string;
+  redirectUrl?: string;
+}
+
+/**
+ * Interface para respuestas de API
+ */
+export interface ApiResponse<T = unknown> {
+  success: boolean;
+  data?: T;
+  error?: string;
+  message?: string;
+  timestamp: string;
+}
+
 /**
  * Tipos para organizaciones (multi-tenancy)
  */
@@ -124,10 +157,43 @@ export interface WorkScheduleConfig {
   break_duration?: number
 }
 
+// =============================================
+// INTERFACES PARA AUTENTICACIÓN
+// =============================================
+
 /**
- * Tipos de asistencia
+ * Credenciales de login
  */
-export interface AttendanceType extends BaseEntity {
+export interface LoginCredentials {
+  email: string;
+  password: string;
+}
+
+/**
+ * Respuesta de autenticación
+ */
+export interface AuthResponse {
+  user: Employee | null;
+  token?: string;
+  expiresAt?: string;
+  refreshToken?: string;
+}
+
+/**
+ * Estado de autenticación
+ */
+export interface AuthState {
+  isAuthenticated: boolean;
+  user: Employee | null;
+  token?: string;
+  loading: boolean;
+  error?: string;
+}
+
+/**
+ * Configuración de tipos de asistencia
+ */
+export interface AttendanceTypeConfig extends BaseEntity {
   organization_id: string
   code: string
   name: string
@@ -160,27 +226,41 @@ export interface Attendance extends BaseEntity {
   organization_id: string
   employee_id: string
   attendance_date: string
+  date: string // Alias para consultas
   check_in_time?: string
   check_out_time?: string
   
   // Cálculos automáticos
   work_hours?: number
+  total_hours?: number
+  regular_hours?: number
   break_duration: number
   overtime_hours: number
   
   // Estado y clasificación
   status: AttendanceStatus
+  type: AttendanceType
   attendance_type_id?: string
+  
+  // Descansos durante la jornada
+  breaks?: BreakRecord[]
+  
+  // Ubicación de registro
+  check_in_location?: string
+  check_out_location?: string
   
   // Ubicación y seguridad
   ip_address?: string
   user_agent?: string
   location_data?: LocationData
   
-  // Aprobación
+  // Aprobación y revisión
   is_approved?: boolean
   approved_by?: string
   approved_at?: string
+  rejected_by?: string
+  rejected_at?: string
+  rejection_reason?: string
   
   // Notas
   employee_notes?: string
@@ -189,22 +269,48 @@ export interface Attendance extends BaseEntity {
   // Relaciones (populadas opcionalmente)
   organization?: Organization
   employee?: Employee
-  attendance_type?: AttendanceType
+  attendance_type?: AttendanceTypeConfig
   approved_by_user?: Employee
 }
 
 /**
- * Estados de asistencia
+ * Estados de asistencia actualizados
  */
 export type AttendanceStatus = 
-  | 'present'      // Presente
-  | 'absent'       // Ausente
-  | 'late'         // Tarde
-  | 'early_leave'  // Salida temprana
-  | 'sick_leave'   // Incapacidad
-  | 'vacation'     // Vacaciones
-  | 'remote'       // Trabajo remoto
-  | 'overtime'     // Tiempo extra
+  | 'present'        // Presente
+  | 'absent'         // Ausente
+  | 'late'           // Tarde
+  | 'early_leave'    // Salida temprana
+  | 'sick_leave'     // Incapacidad
+  | 'vacation'       // Vacaciones
+  | 'remote'         // Trabajo remoto
+  | 'overtime'       // Tiempo extra
+  | 'on_time'        // A tiempo (nuevo)
+  | 'early_departure' // Salida temprana (nuevo)
+  | 'complete'       // Completo (nuevo)
+  | 'pending'        // Pendiente (nuevo)
+  | 'approved'       // Aprobado (nuevo)
+  | 'rejected'       // Rechazado (nuevo)
+
+/**
+ * Tipos de asistencia disponibles
+ */
+export type AttendanceType = 
+  | 'regular'        // Regular
+  | 'overtime'       // Tiempo extra
+  | 'remote'         // Remoto
+  | 'holiday'        // Feriado
+  | 'vacation'       // Vacaciones
+  | 'sick_leave'     // Incapacidad
+
+/**
+ * Interface para descansos durante la jornada
+ */
+export interface BreakRecord {
+  type: 'lunch' | 'short_break' | 'personal' | 'medical';
+  start_time: string;
+  end_time?: string;
+}
 
 /**
  * Datos de ubicación geográfica

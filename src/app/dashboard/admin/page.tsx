@@ -5,6 +5,33 @@ import { useRouter } from 'next/navigation';
 import { createSupabaseClient } from '@/lib/supabase/client';
 import { Employee } from '@/types/database';
 
+interface AttendanceRecord {
+  id: string;
+  organization_id: string;
+  employee_id: string;
+  attendance_date: string;
+  check_in_time: string | null;
+  check_out_time: string | null;
+  status: string;
+  created_at: string;
+  employee?: {
+    first_name: string;
+    last_name: string;
+    email: string;
+  };
+}
+
+interface AttendanceRaw {
+  id: string;
+  organization_id: string;
+  employee_id: string;
+  attendance_date: string;
+  check_in_time: string | null;
+  check_out_time: string | null;
+  status: string;
+  created_at: string;
+}
+
 export default function AdminDashboard() {
   const router = useRouter();
   const [employee, setEmployee] = useState<Employee | null>(null);
@@ -15,104 +42,132 @@ export default function AdminDashboard() {
     lateToday: 0,
     absentToday: 0
   });
-  const [recentAttendances, setRecentAttendances] = useState<any[]>([]);
+  const [recentAttendances, setRecentAttendances] = useState<AttendanceRecord[]>([]);
 
   useEffect(() => {
-    loadAdminData();
-    loadStats();
-    loadRecentAttendances();
-  }, []);
+    const loadAdminData = async () => {
+      try {
+        const supabase = createSupabaseClient();
+        const { data: { user } } = await supabase.auth.getUser();
+        
+        if (!user) {
+          router.push('/auth/login');
+          return;
+        }
 
-  const loadAdminData = async () => {
-    try {
-      const supabase = createSupabaseClient();
-      const { data: { user } } = await supabase.auth.getUser();
-      
-      if (!user) {
-        router.push('/auth/login');
-        return;
+        const { data: employeeData, error } = await supabase
+          .from('employees')
+          .select(`
+            *,
+            department:departments(name),
+            position:positions(title)
+          `)
+          .eq('email', user.email)
+          .single();
+
+        if (error || !employeeData) {
+          console.error('Error loading employee:', error);
+          router.push('/auth/login');
+          return;
+        }
+
+        // Verificar que sea admin
+        if (!['admin', 'super_admin'].includes(employeeData.role)) {
+          router.push('/dashboard/employee');
+          return;
+        }
+
+        setEmployee(employeeData);
+      } catch (error) {
+        console.error('Error:', error);
+      } finally {
+        setLoading(false);
       }
+    };
 
-      const { data: employeeData, error } = await supabase
-        .from('employees')
-        .select(`
-          *,
-          department:departments(name),
-          position:positions(title)
-        `)
-        .eq('email', user.email)
-        .single();
+    const loadStats = async () => {
+      try {
+        const supabase = createSupabaseClient();
+        const today = new Date().toISOString().split('T')[0];
+        const orgId = '550e8400-e29b-41d4-a716-446655440000';
 
-      if (error || !employeeData) {
-        console.error('Error loading employee:', error);
-        router.push('/auth/login');
-        return;
+        // Total empleados
+        const { count: totalEmployees } = await supabase
+          .from('employees')
+          .select('*', { count: 'exact', head: true })
+          .eq('is_active', true)
+          .eq('organization_id', orgId);
+
+        // Asistencias de hoy
+        const { data: todayAttendances } = await supabase
+          .from('attendances')
+          .select('*')
+          .eq('attendance_date', today)
+          .eq('organization_id', orgId);
+
+        const presentToday = todayAttendances?.length || 0;
+        const lateToday = todayAttendances?.filter((a: AttendanceRecord) => a.status === 'late').length || 0;
+        const absentToday = (totalEmployees || 0) - presentToday;
+
+        setStats({
+          totalEmployees: totalEmployees || 0,
+          presentToday,
+          lateToday,
+          absentToday
+        });
+      } catch (error) {
+        console.error('Error loading stats:', error);
       }
+    };
 
-      // Verificar que sea admin
-      if (!['admin', 'super_admin'].includes(employeeData.role)) {
-        router.push('/dashboard/employee');
-        return;
+    const loadRecentAttendances = async () => {
+      try {
+        const supabase = createSupabaseClient();
+        const orgId = '550e8400-e29b-41d4-a716-446655440000';
+        
+        // Consulta asistencias
+        const { data: attendancesData, error: attendancesError } = await supabase
+          .from('attendances')
+          .select('*')
+          .eq('organization_id', orgId)
+          .order('created_at', { ascending: false })
+          .limit(10);
+
+        if (attendancesError || !attendancesData) {
+          console.error('Error loading attendances:', attendancesError);
+          setRecentAttendances([]);
+          return;
+        }
+
+        // Obtener datos de empleados para cada asistencia
+        const attendancesWithEmployees = await Promise.all(
+          attendancesData.map(async (attendance: AttendanceRaw) => {
+            const { data: employeeData } = await supabase
+              .from('employees')
+              .select('first_name, last_name, email')
+              .eq('id', attendance.employee_id)
+              .single();
+
+            return {
+              ...attendance,
+              employee: employeeData
+            };
+          })
+        );
+
+        setRecentAttendances(attendancesWithEmployees || []);
+      } catch (error) {
+        console.error('Error loading recent attendances:', error);
       }
+    };
 
-      setEmployee(employeeData);
-    } catch (error) {
-      console.error('Error:', error);
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  const loadStats = async () => {
-    try {
-      const supabase = createSupabaseClient();
-      const today = new Date().toISOString().split('T')[0];
-
-      // Total empleados
-      const { count: totalEmployees } = await supabase
-        .from('employees')
-        .select('*', { count: 'exact', head: true })
-        .eq('is_active', true);
-
-      // Asistencias de hoy
-      const { data: todayAttendances } = await supabase
-        .from('attendances')
-        .select('*')
-        .eq('date', today);
-
-      const presentToday = todayAttendances?.length || 0;
-      const lateToday = todayAttendances?.filter(a => a.status === 'late').length || 0;
-      const absentToday = (totalEmployees || 0) - presentToday;
-
-      setStats({
-        totalEmployees: totalEmployees || 0,
-        presentToday,
-        lateToday,
-        absentToday
-      });
-    } catch (error) {
-      console.error('Error loading stats:', error);
-    }
-  };
-
-  const loadRecentAttendances = async () => {
-    try {
-      const supabase = createSupabaseClient();
-      
-      const { data } = await supabase
-        .from('attendances')
-        .select(`
-          *,
-          employee:employees(full_name, email)
-        `)
-        .order('created_at', { ascending: false })
-        .limit(10);
-
-      setRecentAttendances(data || []);
-    } catch (error) {
-      console.error('Error loading recent attendances:', error);
-    }
-  };
+    const loadAllData = async () => {
+      await loadAdminData();
+      await loadStats();
+      await loadRecentAttendances();
+    };
+    loadAllData();
+  }, [router]);
 
   const handleLogout = async () => {
     const supabase = createSupabaseClient();
@@ -308,10 +363,10 @@ export default function AdminDashboard() {
                     {recentAttendances.map((attendance) => (
                       <tr key={attendance.id}>
                         <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">
-                          {attendance.employee?.full_name}
+                          {attendance.employee?.first_name} {attendance.employee?.last_name}
                         </td>
                         <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
-                          {new Date(attendance.date).toLocaleDateString('es-MX')}
+                          {new Date(attendance.attendance_date).toLocaleDateString('es-MX')}
                         </td>
                         <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
                           {attendance.check_in_time || 'N/A'}
