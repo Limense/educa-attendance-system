@@ -43,7 +43,7 @@ export default function EmployeeForm({
     positionId: '',
     hireDate: '',
     role: 'employee',
-    password: '',
+    // ...eliminado campo de contraseña...
     sendWelcomeEmail: true
   });
 
@@ -79,7 +79,7 @@ export default function EmployeeForm({
         positionId: employee.position_id || '',
         hireDate: employee.hire_date.split('T')[0], // Solo la fecha
         role: employee.role,
-        password: '', // No mostrar contraseña al editar
+        // ...eliminado campo de contraseña...
         sendWelcomeEmail: false // No enviar email al editar
       });
     }
@@ -95,23 +95,7 @@ export default function EmployeeForm({
         const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
         return !value.trim() ? 'El email es requerido' 
              : !emailRegex.test(value) ? 'Email inválido' : '';
-      case 'password':
-        // Solo requerir contraseña al crear (no al editar)
-        if (!employee && !value.trim()) {
-          return 'La contraseña temporal es requerida para crear la cuenta de usuario';
-        }
-        if (value.trim() && value.length < 8) {
-          return 'La contraseña debe tener al menos 8 caracteres';
-        }
-        if (value.trim() && value.length > 0) {
-          // Validación adicional para contraseñas más seguras
-          const hasNumber = /\d/.test(value);
-          const hasLetter = /[a-zA-Z]/.test(value);
-          if (!hasNumber || !hasLetter) {
-            return 'La contraseña debe contener al menos una letra y un número';
-          }
-        }
-        return '';
+      // ...eliminada validación de contraseña...
       case 'employeeCode':
         // El código de empleado es opcional, se genera automáticamente si no se proporciona
         return '';
@@ -198,8 +182,7 @@ export default function EmployeeForm({
           errorMessage = 'Ya existe un usuario registrado con este email. Use un email diferente.';
         } else if (message.includes('invalid email') || message.includes('email not valid')) {
           errorMessage = 'El formato del email no es válido. Verifique e intente nuevamente.';
-        } else if (message.includes('password') && message.includes('weak')) {
-          errorMessage = 'La contraseña no cumple con los requisitos de seguridad. Use al menos 8 caracteres con letras y números.';
+        // ...eliminado manejo de error de contraseña...
         } else if (message.includes('rate limit') || message.includes('too many requests')) {
           errorMessage = 'Demasiados intentos. Espere unos minutos antes de intentar nuevamente.';
         } else if (message.includes('network') || message.includes('connection')) {
@@ -477,63 +460,7 @@ export default function EmployeeForm({
           </div>
 
           {/* Autenticación */}
-          {!isEditing && (
-            <div className="space-y-4">
-              <h3 className="text-lg font-medium text-gray-900 flex items-center gap-2">
-                <Shield className="w-5 h-5" />
-                Autenticación
-              </h3>
-              
-              <div className="bg-blue-50 border border-blue-200 rounded-md p-3 mb-4">
-                <div className="flex items-start gap-2">
-                  <div className="w-4 h-4 bg-blue-500 rounded-full flex items-center justify-center mt-0.5">
-                    <div className="w-2 h-2 bg-white rounded-full"></div>
-                  </div>
-                  <div>
-                    <p className="text-sm font-medium text-blue-900">
-                      Cuenta de usuario automática
-                    </p>
-                    <p className="text-xs text-blue-700 mt-1">
-                      Se creará automáticamente una cuenta de acceso al sistema con el email proporcionado.
-                      El empleado podrá usar estas credenciales para iniciar sesión.
-                    </p>
-                  </div>
-                </div>
-              </div>
-              
-              <div>
-                <label htmlFor="password" className="block text-sm font-medium text-gray-700 mb-1">
-                  Contraseña temporal *
-                </label>
-                <Input
-                  id="password"
-                  type="password"
-                  value={formData.password}
-                  onChange={(e) => handleInputChange('password', e.target.value)}
-                  onBlur={() => handleBlur('password')}
-                  className={errors.password && touched.password ? 'border-red-500' : ''}
-                  placeholder="Mínimo 8 caracteres"
-                />
-                <div className="mt-2 space-y-1">
-                  <p className="text-xs text-gray-500">
-                    • Mínimo 8 caracteres
-                  </p>
-                  <p className="text-xs text-gray-500">
-                    • Debe contener al menos una letra y un número
-                  </p>
-                  <p className="text-xs text-gray-500">
-                    • El empleado deberá cambiar esta contraseña en su primer acceso
-                  </p>
-                  <p className="text-xs text-amber-600">
-                    • Asegúrate de compartir estas credenciales de forma segura
-                  </p>
-                </div>
-                {errors.password && touched.password && (
-                  <p className="mt-1 text-xs text-red-600">{errors.password}</p>
-                )}
-              </div>
-            </div>
-          )}
+          {/* ...eliminado campo de contraseña y sección de autenticación... */}
 
           {/* Opciones adicionales */}
           {!isEditing && (

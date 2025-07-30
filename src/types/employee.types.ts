@@ -57,7 +57,6 @@ export interface EmployeeFormData {
   positionId?: string;
   hireDate: string;
   role: string;
-  password: string; // Nueva contraseña para el usuario
   sendWelcomeEmail: boolean;
 }
 
