@@ -51,12 +51,13 @@ export interface EmployeeFormData {
   firstName: string;
   lastName: string;
   email: string;
-  phone?: string;
+  phone: string;
   employeeCode: string;
-  departmentId?: string;
-  positionId?: string;
+  departmentId: string;
+  positionId: string;
   hireDate: string;
   role: string;
+  password: string;
   sendWelcomeEmail: boolean;
 }
 

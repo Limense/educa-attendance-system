@@ -40,12 +40,15 @@ export async function POST(request: NextRequest) {
     });
 
     // 1. Crear usuario en Supabase Auth
-    // Puedes cambiar la contraseña por defecto aquí
-    const defaultPassword = 'Educa2025*';
+    // Usar la contraseña enviada desde el frontend
+    const { password } = body;
+    if (!password || password.length < 8) {
+      return Response.json({ error: 'La contraseña debe tener al menos 8 caracteres.' }, { status: 400 });
+    }
     const { data: user, error: authError } = await supabase.auth.admin.createUser({
       email,
       email_confirm: true,
-      password: defaultPassword
+      password
     });
 
     if (authError || !user?.user) {

@@ -100,7 +100,7 @@ export default function LoginPage() {
       },
       employee: {
         email: 'empleado1@educa-demo.com', 
-        password: 'empleado123'
+        password: 'Educa2025*'
       }
     };
 

@@ -43,7 +43,7 @@ export default function EmployeeForm({
     positionId: '',
     hireDate: '',
     role: 'employee',
-    // ...eliminado campo de contraseña...
+    password: '',
     sendWelcomeEmail: true
   });
 
@@ -79,7 +79,7 @@ export default function EmployeeForm({
         positionId: employee.position_id || '',
         hireDate: employee.hire_date.split('T')[0], // Solo la fecha
         role: employee.role,
-        // ...eliminado campo de contraseña...
+        password: '', // No se edita la contraseña en modo edición
         sendWelcomeEmail: false // No enviar email al editar
       });
     }
@@ -233,6 +233,26 @@ export default function EmployeeForm({
         )}
 
         <form onSubmit={handleSubmit} className="space-y-6">
+          {/* Campo de contraseña */}
+          {!isEditing && (
+            <div>
+              <label htmlFor="password" className="block text-sm font-medium text-gray-700 mb-1">
+                Contraseña *
+              </label>
+              <Input
+                id="password"
+                type="password"
+                value={formData.password}
+                onChange={e => handleInputChange('password', e.target.value)}
+                onBlur={() => handleBlur('password')}
+                className={errors.password && touched.password ? 'border-red-500' : ''}
+                placeholder="Mínimo 8 caracteres, una mayúscula y un símbolo"
+              />
+              {errors.password && touched.password && (
+                <p className="mt-1 text-xs text-red-600">{errors.password}</p>
+              )}
+            </div>
+          )}
           {/* Información Personal */}
           <div className="space-y-4">
             <h3 className="text-lg font-medium text-gray-900 flex items-center gap-2">
