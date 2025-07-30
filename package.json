@@ -6,7 +6,8 @@
     "dev": "next dev --turbopack",
     "build": "next build",
     "start": "next start",
-    "lint": "next lint"
+    "lint": "next lint",
+    "test:auth-integration": "tsx scripts/test-auth-integration.ts"
   },
   "dependencies": {
     "@hookform/resolvers": "^5.2.0",

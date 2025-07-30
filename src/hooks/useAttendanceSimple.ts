@@ -9,7 +9,7 @@
 
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback, useMemo } from 'react';
 import { EmployeeRepository } from '@/repositories/employee.repository';
 import { AttendanceService } from '@/services/attendance.service';
 import type { Attendance } from '@/types/database';
@@ -31,13 +31,13 @@ export function useAttendance(employeeId: string | null) {
   const [loading, setLoading] = useState(true);
   const [isProcessing, setIsProcessing] = useState(false);
 
-  // Inicializar servicios
-  const attendanceService = new AttendanceService(new EmployeeRepository());
+  // Inicializar servicios memoizados
+  const attendanceService = useMemo(() => new AttendanceService(new EmployeeRepository()), []);
 
   /**
    * Cargar asistencia del día actual
    */
-  const loadTodayAttendance = async () => {
+  const loadTodayAttendance = useCallback(async () => {
     if (!employeeId) return;
 
     try {
@@ -49,7 +49,7 @@ export function useAttendance(employeeId: string | null) {
     } finally {
       setLoading(false);
     }
-  };
+  }, [employeeId, attendanceService]);
 
   /**
    * Efecto para cargar datos iniciales
@@ -58,7 +58,7 @@ export function useAttendance(employeeId: string | null) {
     if (employeeId) {
       loadTodayAttendance();
     }
-  }, [employeeId]);
+  }, [employeeId, loadTodayAttendance]);
 
   /**
    * Registrar entrada
@@ -82,6 +82,7 @@ export function useAttendance(employeeId: string | null) {
         attendance: result.attendance
       };
     } catch (error) {
+      console.error('Error en check-in:', error);
       return {
         success: false,
         message: 'Error al registrar entrada'
@@ -113,6 +114,7 @@ export function useAttendance(employeeId: string | null) {
         attendance: result.attendance
       };
     } catch (error) {
+      console.error('Error en check-out:', error);
       return {
         success: false,
         message: 'Error al registrar salida'

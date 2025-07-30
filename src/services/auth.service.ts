@@ -19,6 +19,7 @@
  * - Factory Pattern - Para creación de clientes Supabase
  */
 
+
 import { createSupabaseClient } from '@/lib/supabase/client';
 import { Employee, AuthResponse, LoginCredentials } from '@/types/database';
 import { EmployeeRepository } from '@/repositories/employee.repository';

@@ -702,13 +702,15 @@ export class AttendanceService implements IAttendanceService {
 
   /**
    * Genera reporte masivo de asistencias
+   * TODO: Implementar filtros avanzados
    */
-  async bulkAttendanceReport(organizationId: string, _filters: ReportFilters): Promise<AttendanceReport[]> {
+  async bulkAttendanceReport(organizationId: string, filters: ReportFilters): Promise<AttendanceReport[]> {
     try {
-      this.logger.info('Generando reporte masivo', { organizationId });
+      this.logger.info('Generando reporte masivo', { organizationId, filters });
 
       // Implementación del reporte masivo
       // Por ahora retornamos array vacío
+      void filters; // Se usará en implementación futura
       return [];
     } catch (error) {
       this.logger.error('Error generando reporte', { organizationId, error });

@@ -7,13 +7,6 @@
 import { createSupabaseClient, validateSupabaseConfig } from './supabase/client'
 import { createServerSupabaseClient } from './supabase/server'
 
-interface Department {
-  id: string
-  name: string
-  code: string
-  organization?: { name: string }
-}
-
 interface Employee {
   id: string
   full_name: string

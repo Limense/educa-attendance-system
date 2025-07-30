@@ -3,9 +3,6 @@
 -- Descripción: Usuarios de prueba para demostración
 -- =============================================
 
--- Nota: Estos usuarios deben crearse desde la interfaz de Supabase Auth
--- o usando el cliente de Supabase en código
-
 -- Usuarios Demo para Testing:
 
 -- 1. ADMINISTRADOR

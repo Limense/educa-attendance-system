@@ -74,7 +74,8 @@ export interface EmployeeFilters {
 export interface CreateEmployeeData {
   organization_id: string;
   employee_code: string;
-  full_name: string;
+  first_name: string;
+  last_name: string;
   email: string;
   phone?: string;
   department_id?: string;
@@ -88,7 +89,8 @@ export interface CreateEmployeeData {
  * Datos para actualizar un empleado existente
  */
 export interface UpdateEmployeeData {
-  full_name?: string;
+  first_name?: string;
+  last_name?: string;
   email?: string;
   phone?: string;
   department_id?: string;
@@ -551,9 +553,12 @@ export class EmployeeRepository implements IEmployeeRepository {
       throw new Error('Formato de email inválido');
     }
 
-    // Validar que el nombre no esté vacío
-    if (!data.full_name.trim()) {
-      throw new Error('El nombre completo es requerido');
+    // Validar que los nombres no estén vacíos
+    if (!data.first_name.trim()) {
+      throw new Error('El nombre es requerido');
+    }
+    if (!data.last_name.trim()) {
+      throw new Error('El apellido es requerido');
     }
   }
 }

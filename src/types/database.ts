@@ -550,6 +550,4 @@ export interface PermissionCheck {
 // EXPORTAR TIPOS PARA USO GLOBAL
 // =============================================
 
-// Nota: Estos exports se habilitarán cuando se creen los archivos correspondientes
-// export type * from './auth'
-// export type * from './components'
+// ...existing code...

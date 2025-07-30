@@ -9,7 +9,7 @@
 
 'use client';
 
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect, useCallback, useMemo } from 'react';
 import { EmployeeRepository } from '@/repositories/employee.repository';
 import { AttendanceService, type AttendanceResponse, type AttendanceStats, BreakType } from '@/services/attendance.service';
 import { Logger } from '@/utils/logger';
@@ -29,8 +29,8 @@ export function useAttendance(employeeId: string | null) {
   // Servicios
   const [attendanceService, setAttendanceService] = useState<AttendanceService | null>(null);
   
-  // Logger estático para evitar dependencias en hooks
-  const logger = new Logger('useAttendance');
+  // Logger memoizado para evitar dependencias en hooks
+  const logger = useMemo(() => new Logger('useAttendance'), []);
 
   /**
    * Inicializa los servicios necesarios
@@ -47,7 +47,7 @@ export function useAttendance(employeeId: string | null) {
     };
 
     initializeServices();
-  }, []);
+  }, [logger]);
 
   /**
    * Carga los datos de asistencia cuando el servicio está listo
@@ -56,7 +56,7 @@ export function useAttendance(employeeId: string | null) {
     if (attendanceService && employeeId) {
       loadAttendanceData();
     }
-  }, [attendanceService, employeeId]);
+  }, [attendanceService, employeeId]); // loadAttendanceData declarado después
 
   /**
    * Carga todos los datos de asistencia
@@ -94,7 +94,7 @@ export function useAttendance(employeeId: string | null) {
     } finally {
       setLoading(false);
     }
-  }, [attendanceService, employeeId]);
+  }, [attendanceService, employeeId, logger]);
 
   /**
    * Registra la entrada del empleado
@@ -137,7 +137,7 @@ export function useAttendance(employeeId: string | null) {
     } finally {
       setIsProcessing(false);
     }
-  }, [attendanceService, employeeId, loadAttendanceData]);
+  }, [attendanceService, employeeId, loadAttendanceData, logger]);
 
   /**
    * Registra la salida del empleado
@@ -178,7 +178,7 @@ export function useAttendance(employeeId: string | null) {
     } finally {
       setIsProcessing(false);
     }
-  }, [attendanceService, employeeId, loadAttendanceData]);
+  }, [attendanceService, employeeId, loadAttendanceData, logger]);
 
   /**
    * Inicia un descanso
@@ -242,7 +242,7 @@ export function useAttendance(employeeId: string | null) {
     } finally {
       setIsProcessing(false);
     }
-  }, [attendanceService, employeeId]);
+  }, [attendanceService, employeeId, logger]);
 
   /**
    * Obtiene la ubicación actual del usuario
@@ -274,7 +274,7 @@ export function useAttendance(employeeId: string | null) {
         }
       );
     });
-  }, []);
+  }, [logger]);
 
   /**
    * Verifica si el empleado puede hacer check-in

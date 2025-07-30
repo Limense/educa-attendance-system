@@ -28,8 +28,9 @@ export default function SetupAuthPage() {
       // Para cada empleado, intentar crear el usuario si no existe
       for (const employee of employees || []) {
         try {
-          // Verificar si el usuario ya existe
+          // Verificar si el usuario ya existe (actualmente no se usa en esta demo)
           const { data: existingUser } = await supabase.auth.getUser();
+          void existingUser; // Prevenir warning de variable no utilizada
           
           setStatus(`Procesando: ${employee.email}`);
           
