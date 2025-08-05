@@ -12,6 +12,9 @@ export default function AdminDashboardPage() {
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
+    // Cambiar título de la página
+    document.title = "Panel Administrativo - Educa Attendance";
+    
     const checkAuth = async () => {
       try {
         const supabase = createSupabaseClient();

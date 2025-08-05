@@ -26,6 +26,9 @@ export default function EmployeeDashboardPage() {
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
+    // Cambiar título de la página
+    document.title = "Dashboard Empleado - Educa Attendance";
+    
     const checkAuth = async () => {
       try {
         const supabase = createSupabaseClient();

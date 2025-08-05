@@ -31,6 +31,9 @@ export default function AttendancePage() {
   const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
+    // Cambiar título de la página
+    document.title = "Registro de Asistencias - Educa Attendance";
+    
     checkAuthAndLoadData();
   }, []);
 
