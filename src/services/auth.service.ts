@@ -271,8 +271,11 @@ export class AuthService implements IAuthService {
     const routeMap: Record<string, string> = {
       'super_admin': '/dashboard/admin',
       'admin': '/dashboard/admin',
-      'manager': '/dashboard/manager',
       'employee': '/dashboard/employee',
+      // Rutas futuras (comentadas por ahora):
+      // 'supervisor': '/dashboard/supervisor',
+      // 'manager': '/dashboard/manager',
+      // 'hr': '/dashboard/hr',
     };
 
     return routeMap[role] || '/dashboard/employee';

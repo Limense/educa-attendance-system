@@ -1,168 +1,127 @@
 /**
- * =============================================
- * COMPONENTE: LISTA DE EMPLEADOS
- * =============================================
- * 
- * Descripción: Componente principal para mostrar y gestionar empleados
- * Utiliza el hook useEmployeeManagement para estado y lógica
- * 
- * Principios aplicados:
- * - Separation of Concerns - UI separada de lógica de negocio
- * - Single Responsibility - Solo renderiza lista de empleados
- * - Composition over Inheritance - Compuesto de componentes menores
+ * LISTA DE EMPLEADOS - DISEÑO MEJORADO Y MODERNO
  */
 
 'use client';
 
-import React, { useState } from 'react';
+import React, { useState, useMemo } from 'react';
 import { Card } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
-import { useEmployeeManagement } from '@/hooks/useEmployeeManagement';
-import { EmployeeTableData } from '@/types/employee.types';
-import { Badge } from '../ui/badge';
+import { Employee } from '@/hooks/useEmployees';
 import { 
-  Users, 
+  Edit, 
+  Trash2, 
   Plus, 
   Search, 
-  Filter, 
-  Edit,
-  Trash2,
+  Filter,
+  Users,
+  Mail,
+  Phone,
+  Building,
+  Briefcase,
+  Calendar,
   UserCheck,
   UserX,
-  Mail,
-  Phone
+  Grid3X3,
+  List
 } from 'lucide-react';
 
 interface EmployeeListProps {
-  organizationId: string;
+  employees: Employee[];
+  loading: boolean;
+  error: string | null;
   onEmployeeCreate?: () => void;
-  onEmployeeEdit?: (employee: EmployeeTableData) => void;
+  onEmployeeEdit?: (employee: Employee) => void;
   onEmployeeDelete?: (employeeId: string) => void;
+  onEmployeeToggleStatus?: (employeeId: string, isActive: boolean) => void;
 }
 
-/**
- * Componente principal de lista de empleados
- */
-export function EmployeeList({ 
-  organizationId, 
+export default function EmployeeList({ 
+  employees,
+  loading,
+  error,
   onEmployeeCreate,
   onEmployeeEdit,
-  onEmployeeDelete 
+  onEmployeeDelete,
+  onEmployeeToggleStatus
 }: EmployeeListProps) {
-  const { state, actions, isLoading, error } = useEmployeeManagement({
-    organizationId,
-    autoLoad: true
-  });
-
-  // Estados locales para UI
+  // Ya no necesitamos el hook aquí porque los datos vienen como props
+  // const { employees, loading, error } = useEmployees(organizationId);
+  
+  // Estados para filtros y búsqueda
   const [searchTerm, setSearchTerm] = useState('');
-  const [selectedEmployees, setSelectedEmployees] = useState<string[]>([]);
-  const [showFilters, setShowFilters] = useState(false);
+  const [filterStatus, setFilterStatus] = useState<'all' | 'active' | 'inactive'>('all');
+  const [viewMode, setViewMode] = useState<'grid' | 'list'>('grid');
 
-  /**
-   * Manejar búsqueda en tiempo real
-   */
-  const handleSearch = (term: string) => {
-    setSearchTerm(term);
-    actions.updateFilters({ search: term });
-  };
+  // Filtrar empleados basado en búsqueda y filtros
+  const filteredEmployees = useMemo(() => {
+    return employees.filter(employee => {
+      const matchesSearch = 
+        employee.full_name.toLowerCase().includes(searchTerm.toLowerCase()) ||
+        employee.email.toLowerCase().includes(searchTerm.toLowerCase()) ||
+        employee.departments?.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
+        employee.positions?.title.toLowerCase().includes(searchTerm.toLowerCase());
+      
+      const matchesStatus = 
+        filterStatus === 'all' || 
+        (filterStatus === 'active' && employee.is_active) ||
+        (filterStatus === 'inactive' && !employee.is_active);
+      
+      return matchesSearch && matchesStatus;
+    });
+  }, [employees, searchTerm, filterStatus]);
 
-  /**
-   * Manejar selección de empleados
-   */
-  const handleEmployeeSelect = (employeeId: string, selected: boolean) => {
-    if (selected) {
-      setSelectedEmployees(prev => [...prev, employeeId]);
-    } else {
-      setSelectedEmployees(prev => prev.filter(id => id !== employeeId));
-    }
-  };
-
-  /**
-   * Manejar seleccionar todos
-   */
-  const handleSelectAll = () => {
-    if (selectedEmployees.length === state.employees.length) {
-      setSelectedEmployees([]);
-    } else {
-      setSelectedEmployees(state.employees.map(emp => emp.id));
-    }
-  };
-
-  /**
-   * Manejar cambio de estado de empleado
-   */
-  const handleToggleEmployeeStatus = async (employeeId: string, currentStatus: boolean) => {
-    const success = currentStatus 
-      ? await actions.deactivateEmployee(employeeId)
-      : await actions.activateEmployee(employeeId);
+  // Estadísticas
+  const stats = useMemo(() => {
+    const active = employees.filter(emp => emp.is_active).length;
+    const inactive = employees.length - active;
+    const departments = new Set(employees.map(emp => emp.departments?.name).filter(Boolean)).size;
     
-    if (!success) {
-      // TODO: Mostrar notificación de error
-      console.error('Error cambiando estado del empleado');
-    }
-  };
+    return { total: employees.length, active, inactive, departments };
+  }, [employees]);
 
-  /**
-   * Obtener badge de estado
-   */
-  const getStatusBadge = (status: string, isActive: boolean) => {
-    if (!isActive) {
-      return <Badge variant="secondary">Inactivo</Badge>;
-    }
-    
-    switch (status) {
-      case 'active':
-        return <Badge variant="default" className="bg-green-100 text-green-800">Activo</Badge>;
-      case 'inactive':
-        return <Badge variant="secondary">Inactivo</Badge>;
-      default:
-        return <Badge variant="outline">{status}</Badge>;
-    }
-  };
-
-  /**
-   * Obtener badge de rol
-   */
-  const getRoleBadge = (role: string) => {
-    const roleColors = {
-      'super_admin': 'bg-purple-100 text-purple-800',
-      'admin': 'bg-red-100 text-red-800',
-      'hr': 'bg-blue-100 text-blue-800',
-      'manager': 'bg-orange-100 text-orange-800',
-      'employee': 'bg-gray-100 text-gray-800'
-    };
-
-    const roleLabels = {
-      'super_admin': 'Super Admin',
-      'admin': 'Administrador',
-      'hr': 'RRHH',
-      'manager': 'Gerente',
-      'employee': 'Empleado'
-    };
-
+  if (loading) {
     return (
-      <Badge 
-        variant="outline" 
-        className={roleColors[role as keyof typeof roleColors] || 'bg-gray-100 text-gray-800'}
-      >
-        {roleLabels[role as keyof typeof roleLabels] || role}
-      </Badge>
+      <div className="space-y-6">
+        {/* Header skeleton */}
+        <Card className="p-6">
+          <div className="flex justify-between items-center">
+            <div className="h-8 bg-gray-200 rounded w-48 animate-pulse"></div>
+            <div className="h-10 bg-gray-200 rounded w-32 animate-pulse"></div>
+          </div>
+        </Card>
+        
+        {/* Stats skeleton */}
+        <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
+          {[...Array(4)].map((_, i) => (
+            <Card key={i} className="p-4">
+              <div className="h-12 bg-gray-200 rounded animate-pulse"></div>
+            </Card>
+          ))}
+        </div>
+        
+        {/* Content skeleton */}
+        <Card className="p-6">
+          <div className="text-center py-8">
+            <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600 mx-auto"></div>
+            <p className="mt-4 text-gray-600 font-medium">Cargando empleados...</p>
+          </div>
+        </Card>
+      </div>
     );
-  };
+  }
 
   if (error) {
     return (
       <Card className="p-6">
-        <div className="text-center">
-          <div className="text-red-500 mb-2">❌ Error</div>
-          <p className="text-gray-600">{error}</p>
-          <Button 
-            onClick={() => actions.loadEmployees()} 
-            className="mt-4"
-            variant="outline"
-          >
+        <div className="text-center py-12">
+          <div className="w-16 h-16 bg-red-100 rounded-full flex items-center justify-center mx-auto mb-4">
+            <UserX className="w-8 h-8 text-red-600" />
+          </div>
+          <h3 className="text-lg font-medium text-gray-900 mb-2">Error al cargar empleados</h3>
+          <p className="text-sm text-gray-600 mb-4">{error}</p>
+          <Button variant="outline" onClick={() => window.location.reload()}>
             Reintentar
           </Button>
         </div>
@@ -172,328 +131,377 @@ export function EmployeeList({
 
   return (
     <div className="space-y-6">
-      {/* Header con título y acciones */}
-      <div className="flex justify-between items-center">
-        <div className="flex items-center space-x-3">
-          <Users className="h-6 w-6 text-blue-600" />
+      {/* Header con título y botón principal */}
+      <Card className="p-6">
+        <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
           <div>
-            <h1 className="text-2xl font-bold text-gray-900">Empleados</h1>
-            <p className="text-gray-600">
-              {state.pagination.total} empleados registrados
-            </p>
+            <h1 className="text-2xl font-bold text-gray-900 flex items-center gap-2">
+              <Users className="w-6 h-6 text-blue-600" />
+              Gestión de Empleados
+            </h1>
+            <p className="text-gray-600 mt-1">Administra el equipo de tu organización</p>
+          </div>
+          {onEmployeeCreate && (
+            <Button onClick={onEmployeeCreate} className="flex items-center gap-2 shadow-lg">
+              <Plus className="w-4 h-4" />
+              Nuevo Empleado
+            </Button>
+          )}
+        </div>
+      </Card>
+
+      {/* Estadísticas */}
+      <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
+        <Card className="p-4 border-l-4 border-l-blue-500">
+          <div className="flex items-center justify-between">
+            <div>
+              <p className="text-sm font-medium text-gray-600">Total Empleados</p>
+              <p className="text-2xl font-bold text-gray-900">{stats.total}</p>
+            </div>
+            <Users className="w-8 h-8 text-blue-500" />
+          </div>
+        </Card>
+        
+        <Card className="p-4 border-l-4 border-l-green-500">
+          <div className="flex items-center justify-between">
+            <div>
+              <p className="text-sm font-medium text-gray-600">Empleados Activos</p>
+              <p className="text-2xl font-bold text-green-600">{stats.active}</p>
+            </div>
+            <UserCheck className="w-8 h-8 text-green-500" />
+          </div>
+        </Card>
+        
+        <Card className="p-4 border-l-4 border-l-red-500">
+          <div className="flex items-center justify-between">
+            <div>
+              <p className="text-sm font-medium text-gray-600">Empleados Inactivos</p>
+              <p className="text-2xl font-bold text-red-600">{stats.inactive}</p>
+            </div>
+            <UserX className="w-8 h-8 text-red-500" />
+          </div>
+        </Card>
+        
+        <Card className="p-4 border-l-4 border-l-purple-500">
+          <div className="flex items-center justify-between">
+            <div>
+              <p className="text-sm font-medium text-gray-600">Departamentos</p>
+              <p className="text-2xl font-bold text-purple-600">{stats.departments}</p>
+            </div>
+            <Building className="w-8 h-8 text-purple-500" />
+          </div>
+        </Card>
+      </div>
+
+      {/* Controles de búsqueda y filtros */}
+      <Card className="p-4">
+        <div className="flex flex-col sm:flex-row gap-4 items-center justify-between">
+          <div className="flex flex-col sm:flex-row gap-4 flex-1">
+            {/* Barra de búsqueda */}
+            <div className="relative flex-1 max-w-md">
+              <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 w-4 h-4 text-gray-400" />
+              <Input
+                placeholder="Buscar por nombre, email, departamento..."
+                value={searchTerm}
+                onChange={(e) => setSearchTerm(e.target.value)}
+                className="pl-10"
+              />
+            </div>
+            
+            {/* Filtro de estado */}
+            <div className="flex items-center gap-2">
+              <Filter className="w-4 h-4 text-gray-500" />
+              <select
+                value={filterStatus}
+                onChange={(e) => setFilterStatus(e.target.value as 'all' | 'active' | 'inactive')}
+                className="border border-gray-300 rounded-md px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+              >
+                <option value="all">Todos los estados</option>
+                <option value="active">Solo activos</option>
+                <option value="inactive">Solo inactivos</option>
+              </select>
+            </div>
+          </div>
+          
+          {/* Controles de vista */}
+          <div className="flex items-center gap-2 bg-gray-100 rounded-lg p-1">
+            <Button
+              variant={viewMode === 'grid' ? 'default' : 'ghost'}
+              size="sm"
+              onClick={() => setViewMode('grid')}
+              className="px-3 py-1"
+            >
+              <Grid3X3 className="w-4 h-4" />
+            </Button>
+            <Button
+              variant={viewMode === 'list' ? 'default' : 'ghost'}
+              size="sm"
+              onClick={() => setViewMode('list')}
+              className="px-3 py-1"
+            >
+              <List className="w-4 h-4" />
+            </Button>
           </div>
         </div>
         
-        <div className="flex items-center space-x-3">
-          <Button
-            onClick={onEmployeeCreate}
-            className="bg-blue-600 hover:bg-blue-700"
-          >
-            <Plus className="h-4 w-4 mr-2" />
-            Nuevo Empleado
-          </Button>
-        </div>
-      </div>
-
-      {/* Barra de búsqueda y filtros */}
-      <Card className="p-4">
-        <div className="flex items-center space-x-4">
-          <div className="flex-1 relative">
-            <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-gray-400" />
-            <Input
-              placeholder="Buscar empleados por nombre, email o código..."
-              value={searchTerm}
-              onChange={(e) => handleSearch(e.target.value)}
-              className="pl-10"
-            />
-          </div>
-          
-          <Button
-            variant="outline"
-            onClick={() => setShowFilters(!showFilters)}
-            className="flex items-center space-x-2"
-          >
-            <Filter className="h-4 w-4" />
-            <span>Filtros</span>
-          </Button>
-        </div>
-
-        {/* Panel de filtros expandible */}
-        {showFilters && (
-          <div className="mt-4 pt-4 border-t">
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">
-                  Departamento
-                </label>
-                <select className="w-full border border-gray-300 rounded-md px-3 py-2">
-                  <option value="">Todos los departamentos</option>
-                  {state.filterOptions.departments.map(dept => (
-                    <option key={dept.id} value={dept.id}>
-                      {dept.name}
-                    </option>
-                  ))}
-                </select>
-              </div>
-              
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">
-                  Cargo
-                </label>
-                <select className="w-full border border-gray-300 rounded-md px-3 py-2">
-                  <option value="">Todos los cargos</option>
-                  {state.filterOptions.positions.map(pos => (
-                    <option key={pos.id} value={pos.id}>
-                      {pos.title}
-                    </option>
-                  ))}
-                </select>
-              </div>
-              
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">
-                  Estado
-                </label>
-                <select className="w-full border border-gray-300 rounded-md px-3 py-2">
-                  <option value="">Todos los estados</option>
-                  <option value="active">Activos</option>
-                  <option value="inactive">Inactivos</option>
-                </select>
-              </div>
-            </div>
+        {/* Resultados de búsqueda */}
+        {searchTerm && (
+          <div className="mt-3 text-sm text-gray-600">
+            Mostrando {filteredEmployees.length} de {employees.length} empleados
           </div>
         )}
       </Card>
 
-      {/* Lista de empleados */}
-      <Card>
-        <div className="p-6">
-          {/* Acciones masivas */}
-          {selectedEmployees.length > 0 && (
-            <div className="mb-4 p-3 bg-blue-50 rounded-lg flex items-center justify-between">
-              <span className="text-sm text-blue-800">
-                {selectedEmployees.length} empleado(s) seleccionado(s)
-              </span>
-              <div className="flex items-center space-x-2">
-                <Button size="sm" variant="outline">
-                  Activar
-                </Button>
-                <Button size="sm" variant="outline">
-                  Desactivar
-                </Button>
-                <Button size="sm" variant="outline">
-                  Exportar
-                </Button>
-              </div>
+      {/* Lista/Grid de empleados */}
+      {filteredEmployees.length === 0 ? (
+        <Card className="p-8">
+          <div className="text-center py-12">
+            <div className="w-16 h-16 bg-gray-100 rounded-full flex items-center justify-center mx-auto mb-4">
+              <Users className="w-8 h-8 text-gray-400" />
             </div>
-          )}
-
-          {/* Tabla de empleados */}
+            <h3 className="text-lg font-medium text-gray-900 mb-2">
+              {searchTerm ? 'No se encontraron empleados' : 'No hay empleados registrados'}
+            </h3>
+            <p className="text-gray-600 mb-6">
+              {searchTerm 
+                ? 'Intenta con otros términos de búsqueda'
+                : 'Comienza agregando empleados a tu organización'
+              }
+            </p>
+            {onEmployeeCreate && !searchTerm && (
+              <Button onClick={onEmployeeCreate} variant="outline" className="flex items-center gap-2">
+                <Plus className="w-4 h-4" />
+                Crear primer empleado
+              </Button>
+            )}
+          </div>
+        </Card>
+      ) : viewMode === 'grid' ? (
+        /* Vista de Grid - Cards */
+        <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-6">
+          {filteredEmployees.map((employee) => (
+            <Card key={employee.id} className="p-6 hover:shadow-lg transition-all duration-200 border-l-4 border-l-blue-500">
+              <div className="flex justify-between items-start mb-4">
+                <div className="flex-1">
+                  <div className="flex items-center gap-2 mb-2">
+                    <h3 className="font-semibold text-lg text-gray-900">{employee.full_name}</h3>
+                    <span className={`px-2 py-1 rounded-full text-xs font-medium ${
+                      employee.is_active 
+                        ? 'bg-green-100 text-green-800' 
+                        : 'bg-red-100 text-red-800'
+                    }`}>
+                      {employee.is_active ? 'Activo' : 'Inactivo'}
+                    </span>
+                  </div>
+                  <p className="text-sm text-gray-600 mb-3">{employee.employee_code}</p>
+                </div>
+                
+                <div className="flex items-center gap-1">
+                  {onEmployeeEdit && (
+                    <Button 
+                      variant="ghost" 
+                      size="sm"
+                      onClick={() => onEmployeeEdit(employee)}
+                      className="h-8 w-8 p-0 hover:bg-blue-50 hover:text-blue-600"
+                      title="Editar empleado"
+                    >
+                      <Edit className="w-4 h-4" />
+                    </Button>
+                  )}
+                  {onEmployeeToggleStatus && (
+                    <Button 
+                      variant="ghost" 
+                      size="sm"
+                      onClick={() => onEmployeeToggleStatus(employee.id, !employee.is_active)}
+                      className={`h-8 w-8 p-0 ${
+                        employee.is_active 
+                          ? 'hover:bg-red-50 hover:text-red-600' 
+                          : 'hover:bg-green-50 hover:text-green-600'
+                      }`}
+                      title={employee.is_active ? 'Desactivar empleado' : 'Activar empleado'}
+                    >
+                      {employee.is_active ? <UserX className="w-4 h-4" /> : <UserCheck className="w-4 h-4" />}
+                    </Button>
+                  )}
+                  {onEmployeeDelete && (
+                    <Button 
+                      variant="ghost" 
+                      size="sm"
+                      onClick={() => onEmployeeDelete(employee.id)}
+                      className="h-8 w-8 p-0 hover:bg-red-50 hover:text-red-600"
+                      title="Eliminar empleado"
+                    >
+                      <Trash2 className="w-4 h-4" />
+                    </Button>
+                  )}
+                </div>
+              </div>
+              
+              <div className="space-y-3">
+                <div className="flex items-center gap-2 text-sm text-gray-600">
+                  <Mail className="w-4 h-4 text-gray-400" />
+                  <span className="truncate">{employee.email}</span>
+                </div>
+                
+                {employee.phone && (
+                  <div className="flex items-center gap-2 text-sm text-gray-600">
+                    <Phone className="w-4 h-4 text-gray-400" />
+                    <span>{employee.phone}</span>
+                  </div>
+                )}
+                
+                {employee.departments && (
+                  <div className="flex items-center gap-2 text-sm text-gray-600">
+                    <Building className="w-4 h-4 text-gray-400" />
+                    <span>{employee.departments.name}</span>
+                  </div>
+                )}
+                
+                {employee.positions && (
+                  <div className="flex items-center gap-2 text-sm text-gray-600">
+                    <Briefcase className="w-4 h-4 text-gray-400" />
+                    <span>{employee.positions.title}</span>
+                  </div>
+                )}
+                
+                <div className="flex items-center gap-2 text-sm text-gray-600">
+                  <Calendar className="w-4 h-4 text-gray-400" />
+                  <span>Ingreso: {new Date(employee.hire_date).toLocaleDateString('es-ES')}</span>
+                </div>
+                
+                <div className="pt-2 border-t">
+                  <span className={`inline-flex items-center px-2 py-1 rounded-full text-xs font-medium ${
+                    employee.role === 'admin' || employee.role === 'super_admin'
+                      ? 'bg-purple-100 text-purple-800'
+                      : employee.role === 'manager'
+                      ? 'bg-blue-100 text-blue-800'
+                      : employee.role === 'supervisor'
+                      ? 'bg-orange-100 text-orange-800'
+                      : 'bg-gray-100 text-gray-800'
+                  }`}>
+                    {employee.role}
+                  </span>
+                </div>
+              </div>
+            </Card>
+          ))}
+        </div>
+      ) : (
+        /* Vista de Lista - Tabla */
+        <Card className="overflow-hidden">
           <div className="overflow-x-auto">
             <table className="w-full">
-              <thead>
-                <tr className="border-b bg-gray-50">
-                  <th className="text-left p-3 w-12">
-                    <input
-                      type="checkbox"
-                      checked={selectedEmployees.length === state.employees.length && state.employees.length > 0}
-                      onChange={handleSelectAll}
-                      className="rounded border-gray-300"
-                    />
+              <thead className="bg-gray-50 border-b">
+                <tr>
+                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                    Empleado
                   </th>
-                  <th className="text-left p-3">Empleado</th>
-                  <th className="text-left p-3">Contacto</th>
-                  <th className="text-left p-3">Departamento</th>
-                  <th className="text-left p-3">Cargo</th>
-                  <th className="text-left p-3">Rol</th>
-                  <th className="text-left p-3">Estado</th>
-                  <th className="text-left p-3">Última Asistencia</th>
-                  <th className="text-right p-3 w-20">Acciones</th>
+                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                    Contacto
+                  </th>
+                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                    Departamento
+                  </th>
+                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                    Rol
+                  </th>
+                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                    Estado
+                  </th>
+                  <th className="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">
+                    Acciones
+                  </th>
                 </tr>
               </thead>
-              <tbody>
-                {isLoading ? (
-                  <tr>
-                    <td colSpan={9} className="text-center p-8">
-                      <div className="flex items-center justify-center">
-                        <div className="animate-spin rounded-full h-6 w-6 border-b-2 border-blue-600"></div>
-                        <span className="ml-2 text-gray-600">Cargando empleados...</span>
+              <tbody className="bg-white divide-y divide-gray-200">
+                {filteredEmployees.map((employee) => (
+                  <tr key={employee.id} className="hover:bg-gray-50 transition-colors">
+                    <td className="px-6 py-4 whitespace-nowrap">
+                      <div>
+                        <div className="text-sm font-medium text-gray-900">{employee.full_name}</div>
+                        <div className="text-sm text-gray-500">{employee.employee_code}</div>
+                      </div>
+                    </td>
+                    <td className="px-6 py-4 whitespace-nowrap">
+                      <div className="text-sm text-gray-900">{employee.email}</div>
+                      {employee.phone && (
+                        <div className="text-sm text-gray-500">{employee.phone}</div>
+                      )}
+                    </td>
+                    <td className="px-6 py-4 whitespace-nowrap">
+                      <div className="text-sm text-gray-900">{employee.departments?.name || '-'}</div>
+                      <div className="text-sm text-gray-500">{employee.positions?.title || '-'}</div>
+                    </td>
+                    <td className="px-6 py-4 whitespace-nowrap">
+                      <span className={`inline-flex items-center px-2 py-1 rounded-full text-xs font-medium ${
+                        employee.role === 'admin' || employee.role === 'super_admin'
+                          ? 'bg-purple-100 text-purple-800'
+                          : employee.role === 'manager'
+                          ? 'bg-blue-100 text-blue-800'
+                          : employee.role === 'supervisor'
+                          ? 'bg-orange-100 text-orange-800'
+                          : 'bg-gray-100 text-gray-800'
+                      }`}>
+                        {employee.role}
+                      </span>
+                    </td>
+                    <td className="px-6 py-4 whitespace-nowrap">
+                      <span className={`inline-flex items-center px-2 py-1 rounded-full text-xs font-medium ${
+                        employee.is_active 
+                          ? 'bg-green-100 text-green-800' 
+                          : 'bg-red-100 text-red-800'
+                      }`}>
+                        {employee.is_active ? 'Activo' : 'Inactivo'}
+                      </span>
+                    </td>
+                    <td className="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
+                      <div className="flex items-center justify-end gap-2">
+                        {onEmployeeEdit && (
+                          <Button 
+                            variant="ghost" 
+                            size="sm"
+                            onClick={() => onEmployeeEdit(employee)}
+                            className="h-8 w-8 p-0 hover:bg-blue-50 hover:text-blue-600"
+                            title="Editar empleado"
+                          >
+                            <Edit className="w-4 h-4" />
+                          </Button>
+                        )}
+                        {onEmployeeToggleStatus && (
+                          <Button 
+                            variant="ghost" 
+                            size="sm"
+                            onClick={() => onEmployeeToggleStatus(employee.id, !employee.is_active)}
+                            className={`h-8 w-8 p-0 ${
+                              employee.is_active 
+                                ? 'hover:bg-red-50 hover:text-red-600' 
+                                : 'hover:bg-green-50 hover:text-green-600'
+                            }`}
+                            title={employee.is_active ? 'Desactivar empleado' : 'Activar empleado'}
+                          >
+                            {employee.is_active ? <UserX className="w-4 h-4" /> : <UserCheck className="w-4 h-4" />}
+                          </Button>
+                        )}
+                        {onEmployeeDelete && (
+                          <Button 
+                            variant="ghost" 
+                            size="sm"
+                            onClick={() => onEmployeeDelete(employee.id)}
+                            className="h-8 w-8 p-0 hover:bg-red-50 hover:text-red-600"
+                            title="Eliminar empleado"
+                          >
+                            <Trash2 className="w-4 h-4" />
+                          </Button>
+                        )}
                       </div>
                     </td>
                   </tr>
-                ) : state.employees.length === 0 ? (
-                  <tr>
-                    <td colSpan={9} className="text-center p-8">
-                      <div className="text-gray-500">
-                        <Users className="h-12 w-12 mx-auto mb-4 opacity-50" />
-                        <p className="text-lg font-medium">No hay empleados registrados</p>
-                        <p className="text-sm">Comienza agregando tu primer empleado</p>
-                        <Button 
-                          onClick={onEmployeeCreate}
-                          className="mt-4"
-                          variant="outline"
-                        >
-                          <Plus className="h-4 w-4 mr-2" />
-                          Agregar Empleado
-                        </Button>
-                      </div>
-                    </td>
-                  </tr>
-                ) : (
-                  state.employees.map((employee) => (
-                    <tr key={employee.id} className="border-b hover:bg-gray-50 transition-colors">
-                      <td className="p-3">
-                        <input
-                          type="checkbox"
-                          checked={selectedEmployees.includes(employee.id)}
-                          onChange={(e) => handleEmployeeSelect(employee.id, e.target.checked)}
-                          className="rounded border-gray-300"
-                        />
-                      </td>
-                      
-                      {/* Información del empleado */}
-                      <td className="p-3">
-                        <div className="flex items-center space-x-3">
-                          <div className="w-10 h-10 bg-blue-100 rounded-full flex items-center justify-center">
-                            <span className="text-blue-600 font-medium text-sm">
-                              {employee.fullName.split(' ').map(n => n[0]).join('').substring(0, 2)}
-                            </span>
-                          </div>
-                          <div>
-                            <div className="font-medium text-gray-900">{employee.fullName}</div>
-                            <div className="text-sm text-gray-500">#{employee.employeeCode}</div>
-                          </div>
-                        </div>
-                      </td>
-                      
-                      {/* Contacto */}
-                      <td className="p-3">
-                        <div className="space-y-1">
-                          <div className="flex items-center text-sm text-gray-600">
-                            <Mail className="h-3 w-3 mr-1" />
-                            {employee.email}
-                          </div>
-                          {employee.phone && (
-                            <div className="flex items-center text-sm text-gray-600">
-                              <Phone className="h-3 w-3 mr-1" />
-                              {employee.phone}
-                            </div>
-                          )}
-                        </div>
-                      </td>
-                      
-                      {/* Departamento */}
-                      <td className="p-3">
-                        <span className="text-sm text-gray-900">
-                          {employee.department || 'Sin asignar'}
-                        </span>
-                      </td>
-                      
-                      {/* Cargo */}
-                      <td className="p-3">
-                        <span className="text-sm text-gray-900">
-                          {employee.position || 'Sin asignar'}
-                        </span>
-                      </td>
-                      
-                      {/* Rol */}
-                      <td className="p-3">
-                        {getRoleBadge(employee.role)}
-                      </td>
-                      
-                      {/* Estado */}
-                      <td className="p-3">
-                        {getStatusBadge(employee.status, employee.isActive)}
-                      </td>
-                      
-                      {/* Última asistencia */}
-                      <td className="p-3">
-                        <span className="text-sm text-gray-600">
-                          {employee.lastAttendance 
-                            ? new Date(employee.lastAttendance).toLocaleDateString()
-                            : 'Sin registros'
-                          }
-                        </span>
-                      </td>
-                      
-                      {/* Acciones */}
-                      <td className="p-3">
-                        <div className="flex items-center justify-end space-x-1">
-                          <Button
-                            size="sm"
-                            variant="ghost"
-                            onClick={() => onEmployeeEdit?.(employee)}
-                            className="h-8 w-8 p-0"
-                          >
-                            <Edit className="h-4 w-4" />
-                          </Button>
-                          
-                          <Button
-                            size="sm"
-                            variant="ghost"
-                            onClick={() => handleToggleEmployeeStatus(employee.id, employee.isActive)}
-                            className="h-8 w-8 p-0"
-                          >
-                            {employee.isActive ? (
-                              <UserX className="h-4 w-4 text-red-500" />
-                            ) : (
-                              <UserCheck className="h-4 w-4 text-green-500" />
-                            )}
-                          </Button>
-                          
-                          <Button
-                            size="sm"
-                            variant="ghost"
-                            onClick={() => onEmployeeDelete?.(employee.id)}
-                            className="h-8 w-8 p-0"
-                          >
-                            <Trash2 className="h-4 w-4 text-red-500" />
-                          </Button>
-                        </div>
-                      </td>
-                    </tr>
-                  ))
-                )}
+                ))}
               </tbody>
             </table>
           </div>
-
-          {/* Paginación */}
-          {state.pagination.total > state.pagination.pageSize && (
-            <div className="mt-6 flex items-center justify-between">
-              <div className="text-sm text-gray-600">
-                Mostrando {Math.min(state.pagination.pageSize, state.employees.length)} de {state.pagination.total} empleados
-              </div>
-              
-              <div className="flex items-center space-x-2">
-                <Button
-                  variant="outline"
-                  size="sm"
-                  onClick={() => actions.changePage(state.pagination.page - 1)}
-                  disabled={state.pagination.page <= 1}
-                >
-                  Anterior
-                </Button>
-                
-                <span className="text-sm text-gray-600">
-                  Página {state.pagination.page}
-                </span>
-                
-                <Button
-                  variant="outline"
-                  size="sm"
-                  onClick={() => actions.changePage(state.pagination.page + 1)}
-                  disabled={!state.pagination.hasMore}
-                >
-                  Siguiente
-                </Button>
-              </div>
-            </div>
-          )}
-        </div>
-      </Card>
+        </Card>
+      )}
     </div>
   );
 }
-
-export default EmployeeList;

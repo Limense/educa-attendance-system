@@ -1,301 +1,205 @@
-'use client'
+/**
+ * PÁGINA DE EMPLEADOS - VERSIÓN FUNCIONAL Y COMPLETA
+ */
+
+'use client';
 
 import React, { useState } from 'react';
-import { useEmployeeManagement } from '@/hooks/useEmployeeManagement';
-import { EmployeeTableData, EmployeeWithRelations, EmployeeFormData } from '@/types/employee.types';
+import { useEmployees, Employee } from '@/hooks/useEmployees';
 import EmployeeList from '@/components/employees/EmployeeList';
 import EmployeeForm from '@/components/employees/EmployeeForm';
-import { Card } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
-import { Plus, ArrowLeft } from 'lucide-react';
+import { ArrowLeft } from 'lucide-react';
+import { employeeService } from '@/services/employee.service';
+import { EmployeeFormData, EmployeeWithRelations } from '@/types/employee.types';
 
-type ViewMode = 'list' | 'create' | 'edit' | 'view';
-
-interface EmployeePageState {
-  view: ViewMode;
-  selectedEmployee?: EmployeeWithRelations;
-}
+type ViewMode = 'list' | 'create' | 'edit';
 
 export default function EmployeePage() {
-  const {
-    state,
-    actions
-  } = useEmployeeManagement({
-    organizationId: '550e8400-e29b-41d4-a716-446655440000', // TODO: Obtener de contexto
-    autoLoad: true
-  });
+  const organizationId = '550e8400-e29b-41d4-a716-446655440000'; // TODO: Obtener de contexto
+  const { employees, loading, error, refetch } = useEmployees(organizationId);
+  const [viewMode, setViewMode] = useState<ViewMode>('list');
+  const [selectedEmployee, setSelectedEmployee] = useState<EmployeeWithRelations | null>(null);
+  const [formLoading, setFormLoading] = useState(false);
 
-  const [pageState, setPageState] = useState<EmployeePageState>({
-    view: 'list'
-  });
-
-  // No necesitamos cargar empleados manualmente ya que el hook lo hace automáticamente
-
-  const handleCreateEmployee = async (formData: EmployeeFormData): Promise<void> => {
-    const success = await actions.createEmployee(formData);
-    if (success) {
-      setPageState({ view: 'list' });
-      await actions.loadEmployees(); // Recargar lista
-    }
-  };
-
-  const handleUpdateEmployee = async (formData: EmployeeFormData): Promise<void> => {
-    if (!pageState.selectedEmployee) return;
-    
-    const success = await actions.updateEmployee(pageState.selectedEmployee.id, formData);
-    if (success) {
-      setPageState({ view: 'list' });
-      await actions.loadEmployees(); // Recargar lista
-    }
-  };
-
-  const handleEditEmployee = (employee: EmployeeTableData) => {
-    // Necesitamos obtener el empleado completo para editarlo
-    // Por ahora simulamos la conversión - en un caso real haríamos una consulta adicional
-    const fullEmployee: EmployeeWithRelations = {
+  // Función para convertir Employee a EmployeeWithRelations
+  const convertToEmployeeWithRelations = (employee: Employee): EmployeeWithRelations => {
+    return {
       id: employee.id,
-      organization_id: '', // Se obtendría de la consulta
-      employee_code: employee.employeeCode,
-      full_name: employee.fullName,
+      organization_id: organizationId, // Usamos el organizationId actual
+      employee_code: employee.employee_code || '', // Proporcionar valor por defecto
+      full_name: employee.full_name,
       email: employee.email,
       phone: employee.phone,
-      department_id: '', // Se mapearía del departamento
-      position_id: '', // Se mapearía del cargo
-      hire_date: employee.hireDate,
+      department_id: employee.departments?.id,
+      position_id: employee.positions?.id,
+      hire_date: employee.hire_date,
       role: employee.role,
-      status: employee.status,
-      is_active: employee.isActive,
-      created_at: '',
-      updated_at: ''
+      status: employee.is_active ? 'active' : 'inactive', // Convertir boolean a string
+      is_active: employee.is_active,
+      created_at: employee.created_at || new Date().toISOString(), // Valor por defecto
+      updated_at: employee.updated_at || new Date().toISOString(), // Valor por defecto
+      department: employee.departments ? {
+        id: employee.departments.id,
+        name: employee.departments.name,
+      } : undefined,
+      position: employee.positions ? {
+        id: employee.positions.id,
+        title: employee.positions.title,
+        description: undefined,
+        department_id: employee.departments?.id || ''
+      } : undefined
     };
-
-    setPageState({ 
-      view: 'edit', 
-      selectedEmployee: fullEmployee 
-    });
   };
 
-  const handleDeleteEmployee = async (id: string) => {
-    if (window.confirm('¿Está seguro de que desea eliminar este empleado?')) {
-      const success = await actions.deleteEmployee(id);
-      if (success) {
-        await actions.loadEmployees(); // Recargar lista
+  const handleCreateEmployee = () => {
+    setSelectedEmployee(null);
+    setViewMode('create');
+  };
+
+  const handleEditEmployee = (employee: Employee) => {
+    setSelectedEmployee(convertToEmployeeWithRelations(employee));
+    setViewMode('edit');
+  };
+
+  const handleDeleteEmployee = async (employeeId: string) => {
+    if (confirm('¿Estás seguro de que quieres eliminar este empleado? Esta acción no se puede deshacer.')) {
+      try {
+        await employeeService.deleteEmployee(employeeId);
+        await refetch();
+        alert('Empleado eliminado correctamente');
+      } catch (error) {
+        console.error('Error eliminando empleado:', error);
+        alert('Error al eliminar el empleado');
       }
     }
   };
 
-  const handleBackToList = () => {
-    setPageState({ view: 'list' });
-  };
-
-  const renderHeader = () => {
-    switch (pageState.view) {
-      case 'create':
-        return (
-          <div className="flex items-center justify-between">
-            <div className="flex items-center gap-3">
-              <Button
-                variant="outline"
-                size="sm"
-                onClick={handleBackToList}
-              >
-                <ArrowLeft className="w-4 h-4 mr-2" />
-                Volver
-              </Button>
-              <h1 className="text-3xl font-bold text-gray-900">Nuevo Empleado</h1>
-            </div>
-          </div>
-        );
-      
-      case 'edit':
-        return (
-          <div className="flex items-center justify-between">
-            <div className="flex items-center gap-3">
-              <Button
-                variant="outline"
-                size="sm"
-                onClick={handleBackToList}
-              >
-                <ArrowLeft className="w-4 h-4 mr-2" />
-                Volver
-              </Button>
-              <h1 className="text-3xl font-bold text-gray-900">
-                Editar Empleado - {pageState.selectedEmployee?.full_name}
-              </h1>
-            </div>
-          </div>
-        );
-      
-      case 'view':
-        return (
-          <div className="flex items-center justify-between">
-            <div className="flex items-center gap-3">
-              <Button
-                variant="outline"
-                size="sm"
-                onClick={handleBackToList}
-              >
-                <ArrowLeft className="w-4 h-4 mr-2" />
-                Volver
-              </Button>
-              <h1 className="text-3xl font-bold text-gray-900">
-                Ver Empleado - {pageState.selectedEmployee?.full_name}
-              </h1>
-            </div>
-            <Button
-              onClick={() => pageState.selectedEmployee && handleEditEmployee({
-                id: pageState.selectedEmployee.id,
-                fullName: pageState.selectedEmployee.full_name,
-                email: pageState.selectedEmployee.email,
-                phone: pageState.selectedEmployee.phone,
-                employeeCode: pageState.selectedEmployee.employee_code,
-                role: pageState.selectedEmployee.role,
-                status: pageState.selectedEmployee.status,
-                hireDate: pageState.selectedEmployee.hire_date,
-                isActive: pageState.selectedEmployee.is_active
-              })}
-            >
-              Editar
-            </Button>
-          </div>
-        );
-      
-      default: // 'list'
-        return (
-          <div className="flex items-center justify-between">
-            <h1 className="text-3xl font-bold text-gray-900">Gestión de Empleados</h1>
-            <Button
-              onClick={() => setPageState({ view: 'create' })}
-              className="flex items-center gap-2"
-            >
-              <Plus className="w-4 h-4" />
-              Nuevo Empleado
-            </Button>
-          </div>
-        );
-    }
-  };
-
-  const renderContent = () => {
-    const organizationId = '550e8400-e29b-41d4-a716-446655440000'; // TODO: Obtener de contexto
+  const handleToggleEmployeeStatus = async (employeeId: string, newStatus: boolean) => {
+    const action = newStatus ? 'activar' : 'desactivar';
+    const actionPast = newStatus ? 'activado' : 'desactivado';
     
-    switch (pageState.view) {
-      case 'create':
-        return (
-          <EmployeeForm
-            onSubmit={handleCreateEmployee}
-            onCancel={handleBackToList}
-            loading={state.loading}
-            organizationId={organizationId}
-          />
-        );
-      
-      case 'edit':
-        return (
-          <EmployeeForm
-            employee={pageState.selectedEmployee}
-            onSubmit={handleUpdateEmployee}
-            onCancel={handleBackToList}
-            loading={state.loading}
-            organizationId={organizationId}
-          />
-        );
-      
-      case 'view':
-        // En un caso real, crearíamos un componente EmployeeDetails separado
-        return (
-          <Card className="w-full max-w-2xl mx-auto">
-            <div className="p-6">
-              <h2 className="text-2xl font-bold mb-6">Detalles del Empleado</h2>
-              {pageState.selectedEmployee && (
-                <div className="space-y-4">
-                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                    <div>
-                      <label className="block text-sm font-medium text-gray-700">Nombre Completo</label>
-                      <p className="mt-1 text-sm text-gray-900">{pageState.selectedEmployee.full_name}</p>
-                    </div>
-                    <div>
-                      <label className="block text-sm font-medium text-gray-700">Código de Empleado</label>
-                      <p className="mt-1 text-sm text-gray-900">{pageState.selectedEmployee.employee_code}</p>
-                    </div>
-                    <div>
-                      <label className="block text-sm font-medium text-gray-700">Email</label>
-                      <p className="mt-1 text-sm text-gray-900">{pageState.selectedEmployee.email}</p>
-                    </div>
-                    <div>
-                      <label className="block text-sm font-medium text-gray-700">Teléfono</label>
-                      <p className="mt-1 text-sm text-gray-900">{pageState.selectedEmployee.phone || 'No especificado'}</p>
-                    </div>
-                    <div>
-                      <label className="block text-sm font-medium text-gray-700">Rol</label>
-                      <p className="mt-1 text-sm text-gray-900">{pageState.selectedEmployee.role}</p>
-                    </div>
-                    <div>
-                      <label className="block text-sm font-medium text-gray-700">Estado</label>
-                      <p className="mt-1 text-sm text-gray-900">{pageState.selectedEmployee.status}</p>
-                    </div>
-                    <div>
-                      <label className="block text-sm font-medium text-gray-700">Fecha de Contratación</label>
-                      <p className="mt-1 text-sm text-gray-900">
-                        {new Date(pageState.selectedEmployee.hire_date).toLocaleDateString()}
-                      </p>
-                    </div>
-                    <div>
-                      <label className="block text-sm font-medium text-gray-700">Estado Activo</label>
-                      <p className="mt-1 text-sm text-gray-900">
-                        {pageState.selectedEmployee.is_active ? 'Sí' : 'No'}
-                      </p>
-                    </div>
-                  </div>
-                </div>
-              )}
-            </div>
-          </Card>
-        );
-      
-      default: // 'list'
-        return (
-          <EmployeeList
-            organizationId="550e8400-e29b-41d4-a716-446655440000"
-            onEmployeeCreate={() => setPageState({ view: 'create' })}
-            onEmployeeEdit={handleEditEmployee}
-            onEmployeeDelete={handleDeleteEmployee}
-          />
-        );
+    if (confirm(`¿Estás seguro de que quieres ${action} este empleado?`)) {
+      try {
+        if (newStatus) {
+          await employeeService.activateEmployee(employeeId);
+        } else {
+          await employeeService.deactivateEmployee(employeeId);
+        }
+        
+        await refetch();
+        alert(`Empleado ${actionPast} correctamente`);
+      } catch (error) {
+        console.error(`Error al ${action} empleado:`, error);
+        alert(`Error al ${action} el empleado`);
+      }
     }
   };
 
-  if (state.error) {
+  const handleFormSubmit = async (data: EmployeeFormData) => {
+    setFormLoading(true);
+    try {
+      if (selectedEmployee) {
+        // Actualizar empleado existente
+        await employeeService.updateEmployee(selectedEmployee.id, data);
+        alert('Empleado actualizado correctamente');
+      } else {
+        // Crear nuevo empleado
+        await employeeService.createEmployee({
+          ...data,
+          organizationId
+        });
+        alert('Empleado creado correctamente');
+      }
+      
+      await refetch();
+      setViewMode('list');
+      setSelectedEmployee(null);
+    } catch (error) {
+      console.error('Error en formulario:', error);
+      throw error; // Dejar que el formulario maneje el error
+    } finally {
+      setFormLoading(false);
+    }
+  };
+
+  const handleBackToList = () => {
+    setViewMode('list');
+    setSelectedEmployee(null);
+  };
+
+  // Vista de creación
+  if (viewMode === 'create') {
     return (
-      <div className="min-h-screen bg-gray-50 py-8">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-          <Card className="p-6">
-            <div className="text-center">
-              <h2 className="text-xl font-semibold text-red-600 mb-2">Error</h2>
-              <p className="text-gray-600">{state.error}</p>
-              <Button 
-                onClick={() => actions.loadEmployees()} 
-                className="mt-4"
-              >
-                Reintentar
-              </Button>
+      <div className="min-h-screen bg-gradient-to-br from-gray-50 to-gray-100">
+        <div className="container mx-auto py-8 px-4 max-w-4xl">
+          <div className="mb-6">
+            <Button variant="outline" onClick={handleBackToList} className="mb-4">
+              <ArrowLeft className="w-4 h-4 mr-2" />
+              Volver a la lista
+            </Button>
+            <div className="text-center mb-6">
+              <h1 className="text-3xl font-bold text-gray-900 mb-2">Crear Nuevo Empleado</h1>
+              <p className="text-gray-600">Completa la información para agregar un nuevo miembro al equipo</p>
             </div>
-          </Card>
+          </div>
+          
+          <EmployeeForm
+            onSubmit={handleFormSubmit}
+            onCancel={handleBackToList}
+            loading={formLoading}
+            organizationId={organizationId}
+          />
         </div>
       </div>
     );
   }
 
+  // Vista de edición
+  if (viewMode === 'edit' && selectedEmployee) {
+    return (
+      <div className="min-h-screen bg-gradient-to-br from-gray-50 to-gray-100">
+        <div className="container mx-auto py-8 px-4 max-w-4xl">
+          <div className="mb-6">
+            <Button variant="outline" onClick={handleBackToList} className="mb-4">
+              <ArrowLeft className="w-4 h-4 mr-2" />
+              Volver a la lista
+            </Button>
+            <div className="text-center mb-6">
+              <h1 className="text-3xl font-bold text-gray-900 mb-2">
+                Editar Empleado
+              </h1>
+              <p className="text-gray-600">
+                Modificando información de <span className="font-medium">{selectedEmployee.full_name}</span>
+              </p>
+            </div>
+          </div>
+          
+          <EmployeeForm
+            employee={selectedEmployee}
+            onSubmit={handleFormSubmit}
+            onCancel={handleBackToList}
+            loading={formLoading}
+            organizationId={organizationId}
+          />
+        </div>
+      </div>
+    );
+  }
+
+  // Vista principal (lista)
   return (
-    <div className="min-h-screen bg-gray-50 py-8">
-      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-        <div className="mb-8">
-          {renderHeader()}
-        </div>
-        
-        <div className="space-y-6">
-          {renderContent()}
-        </div>
+    <div className="min-h-screen bg-gradient-to-br from-gray-50 to-gray-100">
+      <div className="container mx-auto py-8 px-4 max-w-7xl">
+        <EmployeeList 
+          employees={employees}
+          loading={loading}
+          error={error}
+          onEmployeeCreate={handleCreateEmployee}
+          onEmployeeEdit={handleEditEmployee}
+          onEmployeeDelete={handleDeleteEmployee}
+          onEmployeeToggleStatus={handleToggleEmployeeStatus}
+        />
       </div>
     </div>
   );

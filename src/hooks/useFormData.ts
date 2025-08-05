@@ -90,6 +90,7 @@ export function useFormData(organizationId: string): UseFormDataResult {
     };
 
     loadData();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [organizationId]);
 
   return {

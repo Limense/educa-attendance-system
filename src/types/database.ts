@@ -139,11 +139,13 @@ export interface Employee extends BaseEntity {
  * Roles de empleados con escalabilidad
  */
 export type EmployeeRole = 
-  | 'employee'      // Empleado básico
-  | 'manager'       // Gerente de equipo
-  | 'hr'           // Recursos humanos
-  | 'admin'        // Administrador
-  | 'super_admin'  // Super administrador
+  | 'employee'      // Empleado básico - solo su asistencia
+  | 'admin'        // Administrador - panel completo y CRUD
+  | 'super_admin'  // Super administrador - control total
+  // Roles futuros (comentados por ahora):
+  // | 'supervisor'   // Supervisor de área
+  // | 'manager'      // Gerente de equipo
+  // | 'hr'          // Recursos humanos
 
 /**
  * Configuración de horario de trabajo

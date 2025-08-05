@@ -1,7 +1,7 @@
 'use client'
 
 import React from 'react';
-import EmployeePageSimple from '@/components/employees/EmployeePageSimple';
+import EmployeePage from '@/components/employees/EmployeePage';
 
 /**
  * Componente wrapper para gestión de empleados en el panel de admin
@@ -12,8 +12,8 @@ import EmployeePageSimple from '@/components/employees/EmployeePageSimple';
  */
 export function EmployeeManagement() {
   return (
-    <div className="p-0"> {/* Sin padding adicional ya que EmployeePageSimple maneja su propio layout */}
-      <EmployeePageSimple />
+    <div className="p-0"> {/* Sin padding adicional ya que EmployeePage maneja su propio layout */}
+      <EmployeePage />
     </div>
   );
 }

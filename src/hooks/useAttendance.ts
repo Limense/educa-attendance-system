@@ -3,66 +3,29 @@
  * HOOK PARA GESTIÓN DE ASISTENCIAS
  * =============================================
  * 
- * Descripción: Hook personalizado que encapsula la lógica de asistencias
- * Utiliza los servicios implementados con arquitectura escalable
+ * Hook simplificado que funciona con el servicio restaurado
  */
 
 'use client';
 
-import { useState, useEffect, useCallback, useMemo } from 'react';
-import { EmployeeRepository } from '@/repositories/employee.repository';
-import { AttendanceService, type AttendanceResponse, type AttendanceStats, BreakType } from '@/services/attendance.service';
-import { Logger } from '@/utils/logger';
-import type { Attendance } from '@/types/database';
+import { useState, useEffect, useCallback } from 'react';
+import { attendanceService, AttendanceResponse } from '@/services/attendance.service';
 
 /**
  * Hook para gestión completa de asistencias
  */
-export function useAttendance(employeeId: string | null) {
+export function useAttendance(employeeId?: string) {
   // Estados principales
-  const [todayAttendance, setTodayAttendance] = useState<Attendance | null>(null);
-  const [attendanceHistory, setAttendanceHistory] = useState<Attendance[]>([]);
-  const [stats, setStats] = useState<AttendanceStats | null>(null);
+  const [todayAttendance, setTodayAttendance] = useState<Record<string, unknown> | null>(null);
+  const [attendanceHistory, setAttendanceHistory] = useState<Record<string, unknown>[]>([]);
   const [loading, setLoading] = useState(true);
   const [isProcessing, setIsProcessing] = useState(false);
 
-  // Servicios
-  const [attendanceService, setAttendanceService] = useState<AttendanceService | null>(null);
-  
-  // Logger memoizado para evitar dependencias en hooks
-  const logger = useMemo(() => new Logger('useAttendance'), []);
-
   /**
-   * Inicializa los servicios necesarios
-   */
-  useEffect(() => {
-    const initializeServices = async () => {
-      try {
-        const employeeRepo = new EmployeeRepository();
-        const service = new AttendanceService(employeeRepo);
-        setAttendanceService(service);
-      } catch (error) {
-        logger.error('Error inicializando servicios', { error });
-      }
-    };
-
-    initializeServices();
-  }, [logger]);
-
-  /**
-   * Carga los datos de asistencia cuando el servicio está listo
-   */
-  useEffect(() => {
-    if (attendanceService && employeeId) {
-      loadAttendanceData();
-    }
-  }, [attendanceService, employeeId]); // loadAttendanceData declarado después
-
-  /**
-   * Carga todos los datos de asistencia
+   * Carga los datos de asistencia
    */
   const loadAttendanceData = useCallback(async () => {
-    if (!attendanceService || !employeeId) return;
+    if (!employeeId) return;
 
     try {
       setLoading(true);
@@ -71,65 +34,56 @@ export function useAttendance(employeeId: string | null) {
       const today = await attendanceService.getTodayAttendance(employeeId);
       setTodayAttendance(today);
 
-      // Cargar historial reciente (últimos 30 días)
-      const endDate = new Date().toISOString().split('T')[0];
-      const startDate = new Date(Date.now() - 30 * 24 * 60 * 60 * 1000).toISOString().split('T')[0];
-      
-      const history = await attendanceService.getAttendanceHistory(employeeId, {
-        startDate,
-        endDate,
-        limit: 30
-      });
+      // Cargar historial reciente
+      const history = await attendanceService.getAttendanceHistory(employeeId, 30);
       setAttendanceHistory(history);
 
-      // Cargar estadísticas del mes
-      const monthStats = await attendanceService.getEmployeeAttendanceStats(employeeId, {
-        startDate,
-        endDate
-      });
-      setStats(monthStats);
-
     } catch (error) {
-      logger.error('Error cargando datos de asistencia', { employeeId, error });
+      console.error('Error cargando datos de asistencia:', error);
     } finally {
       setLoading(false);
     }
-  }, [attendanceService, employeeId, logger]);
+  }, [employeeId]);
+
+  /**
+   * Carga datos cuando el empleado cambia
+   */
+  useEffect(() => {
+    if (employeeId) {
+      loadAttendanceData();
+    }
+  }, [employeeId, loadAttendanceData]);
 
   /**
    * Registra la entrada del empleado
    */
-  const checkIn = useCallback(async (location?: GeolocationPosition): Promise<AttendanceResponse> => {
-    if (!attendanceService || !employeeId) {
+  const checkIn = useCallback(async (): Promise<AttendanceResponse> => {
+    if (!employeeId) {
       return {
         success: false,
-        message: 'Servicio no disponible'
+        message: 'ID de empleado no disponible'
       };
     }
 
     try {
       setIsProcessing(true);
-      logger.info('Iniciando check-in', { employeeId });
 
-      const locationData = location ? {
-        latitude: location.coords.latitude,
-        longitude: location.coords.longitude,
-        accuracy: location.coords.accuracy,
-        timestamp: new Date().toISOString()
-      } : undefined;
-
-      const result = await attendanceService.checkIn(employeeId, locationData);
+      // Necesito obtener el organization_id del empleado
+      // Por ahora uso el primer empleado del contexto como referencia
+      const organizationId = await getEmployeeOrganizationId(employeeId);
+      
+      const result = await attendanceService.checkIn(employeeId, organizationId);
       
       if (result.success) {
         // Actualizar estado local
-        setTodayAttendance(result.attendance || null);
-        // Recargar datos para mantener sincronización
+        setTodayAttendance(result.data || null);
+        // Recargar datos
         await loadAttendanceData();
       }
 
       return result;
     } catch (error) {
-      logger.error('Error en check-in', { employeeId, error });
+      console.error('Error en check-in:', error);
       return {
         success: false,
         message: 'Error al registrar entrada'
@@ -137,40 +91,31 @@ export function useAttendance(employeeId: string | null) {
     } finally {
       setIsProcessing(false);
     }
-  }, [attendanceService, employeeId, loadAttendanceData, logger]);
+  }, [employeeId, loadAttendanceData]);
 
   /**
    * Registra la salida del empleado
    */
-  const checkOut = useCallback(async (location?: GeolocationPosition): Promise<AttendanceResponse> => {
-    if (!attendanceService || !employeeId) {
+  const checkOut = useCallback(async (): Promise<AttendanceResponse> => {
+    if (!employeeId) {
       return {
         success: false,
-        message: 'Servicio no disponible'
+        message: 'ID de empleado no disponible'
       };
     }
 
     try {
       setIsProcessing(true);
-      logger.info('Iniciando check-out', { employeeId });
-
-      const locationData = location ? {
-        latitude: location.coords.latitude,
-        longitude: location.coords.longitude,
-        accuracy: location.coords.accuracy,
-        timestamp: new Date().toISOString()
-      } : undefined;
-
-      const result = await attendanceService.checkOut(employeeId, locationData);
+      const result = await attendanceService.checkOut(employeeId);
       
       if (result.success) {
-        setTodayAttendance(result.attendance || null);
+        setTodayAttendance(result.data || null);
         await loadAttendanceData();
       }
 
       return result;
     } catch (error) {
-      logger.error('Error en check-out', { employeeId, error });
+      console.error('Error en check-out:', error);
       return {
         success: false,
         message: 'Error al registrar salida'
@@ -178,103 +123,25 @@ export function useAttendance(employeeId: string | null) {
     } finally {
       setIsProcessing(false);
     }
-  }, [attendanceService, employeeId, loadAttendanceData, logger]);
+  }, [employeeId, loadAttendanceData]);
 
   /**
-   * Inicia un descanso
-   */
-  const startBreak = useCallback(async (breakType: 'lunch' | 'short_break' | 'personal' | 'medical' = 'short_break'): Promise<AttendanceResponse> => {
-    if (!attendanceService || !employeeId) {
-      return {
-        success: false,
-        message: 'Servicio no disponible'
-      };
-    }
-
-    try {
-      setIsProcessing(true);
-      // Mapear tipos al enum correcto
-      const mappedBreakType = breakType as BreakType;
-      const result = await attendanceService.registerBreak(employeeId, mappedBreakType);
-      
-      if (result.success) {
-        setTodayAttendance(result.attendance || null);
-      }
-
-      return result;
-    } catch (error) {
-      logger.error('Error iniciando descanso', { employeeId, breakType, error });
-      return {
-        success: false,
-        message: 'Error al iniciar descanso'
-      };
-    } finally {
-      setIsProcessing(false);
-    }
-  }, [attendanceService, employeeId, logger]);
-
-  /**
-   * Termina el descanso activo
-   */
-  const endBreak = useCallback(async (): Promise<AttendanceResponse> => {
-    if (!attendanceService || !employeeId) {
-      return {
-        success: false,
-        message: 'Servicio no disponible'
-      };
-    }
-
-    try {
-      setIsProcessing(true);
-      const result = await attendanceService.endBreak(employeeId);
-      
-      if (result.success) {
-        setTodayAttendance(result.attendance || null);
-      }
-
-      return result;
-    } catch (error) {
-      logger.error('Error terminando descanso', { employeeId, error });
-      return {
-        success: false,
-        message: 'Error al terminar descanso'
-      };
-    } finally {
-      setIsProcessing(false);
-    }
-  }, [attendanceService, employeeId, logger]);
-
-  /**
-   * Obtiene la ubicación actual del usuario
+   * Obtiene la ubicación actual (stub para compatibilidad)
    */
   const getCurrentLocation = useCallback((): Promise<GeolocationPosition | null> => {
     return new Promise((resolve) => {
       if (!navigator.geolocation) {
-        logger.warn('Geolocalización no disponible');
         resolve(null);
         return;
       }
 
       navigator.geolocation.getCurrentPosition(
-        (position) => {
-          logger.debug('Ubicación obtenida', {
-            lat: position.coords.latitude,
-            lng: position.coords.longitude
-          });
-          resolve(position);
-        },
-        (error) => {
-          logger.warn('Error obteniendo ubicación', { error: error.message });
-          resolve(null);
-        },
-        {
-          enableHighAccuracy: true,
-          timeout: 10000,
-          maximumAge: 300000 // 5 minutos
-        }
+        (position) => resolve(position),
+        () => resolve(null),
+        { timeout: 5000 }
       );
     });
-  }, [logger]);
+  }, []);
 
   /**
    * Verifica si el empleado puede hacer check-in
@@ -291,18 +158,36 @@ export function useAttendance(employeeId: string | null) {
   }, [todayAttendance]);
 
   /**
-   * Verifica si hay un descanso activo
+   * Verifica si hay un descanso activo (stub para compatibilidad)
    */
   const hasActiveBreak = useCallback((): boolean => {
-    if (!todayAttendance?.breaks) return false;
-    return todayAttendance.breaks.some(b => !b.end_time);
-  }, [todayAttendance]);
+    return false; // Simplificado por ahora
+  }, []);
+
+  /**
+   * Inicia un descanso (stub para compatibilidad)
+   */
+  const startBreak = useCallback(async (): Promise<AttendanceResponse> => {
+    return {
+      success: false,
+      message: 'Función de descansos pendiente de implementar'
+    };
+  }, []);
+
+  /**
+   * Termina el descanso activo (stub para compatibilidad)
+   */
+  const endBreak = useCallback(async (): Promise<AttendanceResponse> => {
+    return {
+      success: false,
+      message: 'Función de descansos pendiente de implementar'
+    };
+  }, []);
 
   return {
     // Estados
     todayAttendance,
     attendanceHistory,
-    stats,
     loading,
     isProcessing,
 
@@ -321,4 +206,30 @@ export function useAttendance(employeeId: string | null) {
     // Métodos de recarga
     refreshData: loadAttendanceData
   };
+}
+
+/**
+ * Función auxiliar para obtener el organization_id del empleado
+ */
+async function getEmployeeOrganizationId(employeeId: string): Promise<string> {
+  try {
+    const { createSupabaseClient } = await import('@/lib/supabase/client');
+    const supabase = createSupabaseClient();
+    
+    const { data, error } = await supabase
+      .from('employees')
+      .select('organization_id')
+      .eq('id', employeeId)
+      .single();
+
+    if (error || !data) {
+      throw new Error('No se pudo obtener la organización del empleado');
+    }
+
+    return data.organization_id;
+  } catch (error) {
+    console.error('Error obteniendo organization_id:', error);
+    // Valor por defecto o error
+    throw error;
+  }
 }

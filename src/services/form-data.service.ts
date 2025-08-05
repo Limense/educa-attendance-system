@@ -1,32 +1,17 @@
 /**
  * =============================================
- * SERVICIO DE DATOS PARA FORMULARIOS
+ * SERVICIO PARA DATOS DE FORMULARIOS
  * =============================================
  * 
- * Descripción: Servicio para obtener datos necesarios para formularios
+ * Descripción: Servicio para obtener datos necesarios en formularios
  * Como departamentos, posiciones, roles, etc.
- * 
- * Principios aplicados:
- * - Single Responsibility: Solo maneja datos de formularios
- * - Dependency Injection: Usa servicios existentes
- * - Service Layer: Abstrae la lógica de obtención de datos
  */
 
-import { SystemConfigService } from './system-config.service';
 import { createSupabaseClient } from '@/lib/supabase/client';
 
 export interface FormDataOption {
   value: string;
   label: string;
-}
-
-export interface Position {
-  id: string;
-  title: string;
-  code: string;
-  department_id?: string;
-  level: number;
-  is_active: boolean;
 }
 
 export interface FormDataService {
@@ -38,117 +23,128 @@ export interface FormDataService {
 }
 
 export class FormDataServiceImpl implements FormDataService {
-  private systemConfigService: SystemConfigService;
-
-  constructor() {
-    this.systemConfigService = new SystemConfigService();
-  }
-
+  
   /**
-   * Obtiene la lista de departamentos para formularios
+   * Obtener departamentos de la organización
    */
   async getDepartments(organizationId: string): Promise<FormDataOption[]> {
     try {
-      const departments = await this.systemConfigService.getDepartments(organizationId);
+      const supabase = createSupabaseClient();
       
-      return departments.map(dept => ({
+      const { data, error } = await supabase
+        .from('departments')
+        .select('id, name')
+        .eq('organization_id', organizationId)
+        .eq('is_active', true)
+        .order('name');
+
+      if (error) {
+        console.error('Error obteniendo departamentos:', error);
+        return [];
+      }
+
+      return data?.map((dept: { id: string; name: string }) => ({
         value: dept.id,
         label: dept.name
-      }));
+      })) || [];
     } catch (error) {
-      console.error('Error obteniendo departamentos:', error);
+      console.error('Error en getDepartments:', error);
       return [];
     }
   }
 
   /**
-   * Obtiene la lista de posiciones/cargos para formularios
+   * Obtener posiciones de la organización
    */
   async getPositions(organizationId: string): Promise<FormDataOption[]> {
     try {
       const supabase = createSupabaseClient();
       
-      const { data: positions, error } = await supabase
+      const { data, error } = await supabase
         .from('positions')
-        .select('id, title, code, level')
+        .select('id, title')
         .eq('organization_id', organizationId)
         .eq('is_active', true)
-        .order('level', { ascending: false })
-        .order('title', { ascending: true });
+        .order('title');
 
       if (error) {
         console.error('Error obteniendo posiciones:', error);
         return [];
       }
 
-      return positions.map((position: { id: string; title: string; code: string }) => ({
-        value: position.id,
-        label: `${position.title} (${position.code})`
-      }));
+      return data?.map((pos: { id: string; title: string }) => ({
+        value: pos.id,
+        label: pos.title
+      })) || [];
     } catch (error) {
-      console.error('Error obteniendo posiciones:', error);
+      console.error('Error en getPositions:', error);
       return [];
     }
   }
 
   /**
-   * Obtiene posiciones filtradas por departamento
+   * Obtener posiciones por departamento
    */
   async getPositionsByDepartment(organizationId: string, departmentId: string): Promise<FormDataOption[]> {
     try {
       const supabase = createSupabaseClient();
       
-      const { data: positions, error } = await supabase
+      const { data, error } = await supabase
         .from('positions')
-        .select('id, title, code, level')
+        .select('id, title')
         .eq('organization_id', organizationId)
         .eq('department_id', departmentId)
         .eq('is_active', true)
-        .order('level', { ascending: false })
-        .order('title', { ascending: true });
+        .order('title');
 
       if (error) {
         console.error('Error obteniendo posiciones por departamento:', error);
         return [];
       }
 
-      return positions.map((position: { id: string; title: string; code: string }) => ({
-        value: position.id,
-        label: `${position.title} (${position.code})`
-      }));
+      return data?.map((pos: { id: string; title: string }) => ({
+        value: pos.id,
+        label: pos.title
+      })) || [];
     } catch (error) {
-      console.error('Error obteniendo posiciones por departamento:', error);
+      console.error('Error en getPositionsByDepartment:', error);
       return [];
     }
   }
 
   /**
-   * Obtiene los roles disponibles
+   * Obtener roles disponibles
    */
   getRoles(): FormDataOption[] {
     return [
       { value: 'employee', label: 'Empleado' },
-      { value: 'manager', label: 'Gerente' },
-      { value: 'hr', label: 'Recursos Humanos' },
       { value: 'admin', label: 'Administrador' },
       { value: 'super_admin', label: 'Super Administrador' }
+      // Roles futuros (comentados por ahora):
+      // { value: 'supervisor', label: 'Supervisor' },
+      // { value: 'manager', label: 'Gerente' },
+      // { value: 'hr', label: 'Recursos Humanos' }
     ];
   }
 
   /**
-   * Obtiene los estados de empleado disponibles
+   * Obtener estados de empleado disponibles
    */
   getEmployeeStatuses(): FormDataOption[] {
     return [
       { value: 'active', label: 'Activo' },
       { value: 'inactive', label: 'Inactivo' },
-      { value: 'on_leave', label: 'De Baja' },
-      { value: 'terminated', label: 'Terminado' }
+      { value: 'suspended', label: 'Suspendido' },
+      { value: 'terminated', label: 'Terminado' },
+      { value: 'on_leave', label: 'En Licencia' }
     ];
   }
 }
 
-// Factory para el servicio
-export const createFormDataService = (): FormDataService => {
+// Función factory para crear instancia del servicio
+export function createFormDataService(): FormDataService {
   return new FormDataServiceImpl();
-};
+}
+
+// Instancia única del servicio
+export const formDataService = new FormDataServiceImpl();

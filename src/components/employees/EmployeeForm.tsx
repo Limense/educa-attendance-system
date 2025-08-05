@@ -95,7 +95,14 @@ export default function EmployeeForm({
         const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
         return !value.trim() ? 'El email es requerido' 
              : !emailRegex.test(value) ? 'Email inválido' : '';
-      // ...eliminada validación de contraseña...
+      case 'password':
+        if (!employee) { // Solo validar contraseña en modo creación
+          return !value ? 'La contraseña es requerida' 
+               : value.length < 8 ? 'La contraseña debe tener al menos 8 caracteres'
+               : !/[A-Z]/.test(value) ? 'La contraseña debe tener al menos una mayúscula'
+               : !/[!@#$%^&*()_+\-=\[\]{};':"\\|,.<>\/?]/.test(value) ? 'La contraseña debe tener al menos un símbolo' : '';
+        }
+        return '';
       case 'employeeCode':
         // El código de empleado es opcional, se genera automáticamente si no se proporciona
         return '';

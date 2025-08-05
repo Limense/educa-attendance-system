@@ -8,7 +8,7 @@
 
 import { createSupabaseClient } from '@/lib/supabase/client';
 import { EmployeeFormData } from '@/types/employee.types';
-import { EmployeeSimple } from '@/hooks/useEmployeeSimple';
+import { Employee } from '@/hooks/useEmployees';
 
 export interface EmployeeService {
   createEmployee(data: EmployeeFormData & { organizationId: string }): Promise<boolean>;
@@ -16,7 +16,7 @@ export interface EmployeeService {
   deleteEmployee(id: string): Promise<boolean>;
   activateEmployee(id: string): Promise<boolean>;
   deactivateEmployee(id: string): Promise<boolean>;
-  getEmployees(organizationId: string): Promise<EmployeeSimple[]>;
+  getEmployees(organizationId: string): Promise<Employee[]>;
 }
 
 export class EmployeeServiceImpl implements EmployeeService {
@@ -24,7 +24,7 @@ export class EmployeeServiceImpl implements EmployeeService {
   /**
    * Obtener todos los empleados (RLS se encarga de filtrar por organización)
    */
-  async getEmployees(organizationId: string): Promise<EmployeeSimple[]> {
+  async getEmployees(organizationId: string): Promise<Employee[]> {
     try {
       const supabase = createSupabaseClient();
       
@@ -132,7 +132,7 @@ export class EmployeeServiceImpl implements EmployeeService {
     }
 
     const emailExists = existingUsers.users.some(
-      user => user.email?.toLowerCase() === data.email.toLowerCase()
+      (user: { email?: string }) => user.email?.toLowerCase() === data.email.toLowerCase()
     );
 
     if (emailExists) {

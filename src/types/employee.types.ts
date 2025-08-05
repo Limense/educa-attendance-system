@@ -190,10 +190,12 @@ export interface EmployeeDeleteDialogState {
  */
 export const EMPLOYEE_ROLES = [
   { value: 'employee', label: 'Empleado' },
-  { value: 'supervisor', label: 'Supervisor' },
-  { value: 'manager', label: 'Gerente' },
   { value: 'admin', label: 'Administrador' },
   { value: 'super_admin', label: 'Super Administrador' }
+  // Roles futuros (comentados por ahora):
+  // { value: 'supervisor', label: 'Supervisor' },
+  // { value: 'manager', label: 'Gerente' },
+  // { value: 'hr', label: 'Recursos Humanos' }
 ] as const;
 
 export const EMPLOYEE_STATUSES = [
