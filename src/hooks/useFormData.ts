@@ -1,16 +1,21 @@
 /**
  * =============================================
- * HOOK PARA DATOS DE FORMULARIOS
+ * HOOK PARA DATOS DE FORMULARIOS - SIMPLIFICADO 
  * =============================================
  * 
- * Descripción: Hook para obtener datos necesarios en formularios
- * Como departamentos, posiciones, roles, etc.
+ * Descripción: Hook simplificado para datos básicos de formularios
+ * Versión funcional que no depende de servicios complejos
  */
 
 'use client';
 
-import { useState, useEffect, useMemo } from 'react';
-import { createFormDataService, FormDataOption } from '@/services/form-data.service';
+import { useState, useEffect } from 'react';
+import { createSupabaseClient } from '@/lib/supabase/client';
+
+export interface FormDataOption {
+  value: string;
+  label: string;
+}
 
 export interface UseFormDataResult {
   departments: FormDataOption[];
@@ -27,19 +32,40 @@ export interface UseFormDataResult {
 export function useFormData(organizationId: string): UseFormDataResult {
   const [departments, setDepartments] = useState<FormDataOption[]>([]);
   const [positions, setPositions] = useState<FormDataOption[]>([]);
-  
-  const service = useMemo(() => createFormDataService(), []);
-  
-  const [roles] = useState<FormDataOption[]>(() => service.getRoles());
-  const [statuses] = useState<FormDataOption[]>(() => service.getEmployeeStatuses());
-  
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+
+  // Datos estáticos para roles y estados ACTUALES
+  const roles: FormDataOption[] = [
+    { value: 'employee', label: 'Empleado' },
+    { value: 'admin', label: 'Administrador' },
+    { value: 'super_admin', label: 'Super Administrador' }
+  ];
+
+  const statuses: FormDataOption[] = [
+    { value: 'active', label: 'Activo' },
+    { value: 'inactive', label: 'Inactivo' }
+  ];
 
   const loadDepartments = async (): Promise<void> => {
     try {
       setError(null);
-      const depts = await service.getDepartments(organizationId);
+      const supabase = createSupabaseClient();
+      
+      const { data, error: supabaseError } = await supabase
+        .from('departments')
+        .select('id, name')
+        .eq('organization_id', organizationId)
+        .eq('is_active', true)
+        .order('name');
+
+      if (supabaseError) throw supabaseError;
+
+      const depts = data?.map((dept: { id: string; name: string }) => ({
+        value: dept.id,
+        label: dept.name
+      })) || [];
+      
       setDepartments(depts);
     } catch (err) {
       console.error('Error cargando departamentos:', err);
@@ -50,7 +76,22 @@ export function useFormData(organizationId: string): UseFormDataResult {
   const loadPositions = async (): Promise<void> => {
     try {
       setError(null);
-      const pos = await service.getPositions(organizationId);
+      const supabase = createSupabaseClient();
+      
+      const { data, error: supabaseError } = await supabase
+        .from('positions')
+        .select('id, title')
+        .eq('organization_id', organizationId)
+        .eq('is_active', true)
+        .order('title');
+
+      if (supabaseError) throw supabaseError;
+
+      const pos = data?.map((position: { id: string; title: string }) => ({
+        value: position.id,
+        label: position.title
+      })) || [];
+      
       setPositions(pos);
     } catch (err) {
       console.error('Error cargando posiciones:', err);
@@ -60,7 +101,22 @@ export function useFormData(organizationId: string): UseFormDataResult {
 
   const getPositionsByDepartment = async (departmentId: string): Promise<FormDataOption[]> => {
     try {
-      return await service.getPositionsByDepartment(organizationId, departmentId);
+      const supabase = createSupabaseClient();
+      
+      const { data, error: supabaseError } = await supabase
+        .from('positions')
+        .select('id, title')
+        .eq('organization_id', organizationId)
+        .eq('department_id', departmentId)
+        .eq('is_active', true)
+        .order('title');
+
+      if (supabaseError) throw supabaseError;
+
+      return data?.map((position: { id: string; title: string }) => ({
+        value: position.id,
+        label: position.title
+      })) || [];
     } catch (err) {
       console.error('Error cargando posiciones por departamento:', err);
       return [];
@@ -73,14 +129,43 @@ export function useFormData(organizationId: string): UseFormDataResult {
       if (!organizationId) return;
       
       setLoading(true);
+      setError(null);
+      
       try {
-        setError(null);
-        const [depts, pos] = await Promise.all([
-          service.getDepartments(organizationId),
-          service.getPositions(organizationId)
+        const supabase = createSupabaseClient();
+        
+        // Cargar departamentos y posiciones en paralelo
+        const [deptResult, posResult] = await Promise.all([
+          supabase
+            .from('departments')
+            .select('id, name')
+            .eq('organization_id', organizationId)
+            .eq('is_active', true)
+            .order('name'),
+          supabase
+            .from('positions')
+            .select('id, title')
+            .eq('organization_id', organizationId)
+            .eq('is_active', true)
+            .order('title')
         ]);
+
+        if (deptResult.error) throw deptResult.error;
+        if (posResult.error) throw posResult.error;
+
+        const depts = deptResult.data?.map((dept: { id: string; name: string }) => ({
+          value: dept.id,
+          label: dept.name
+        })) || [];
+
+        const pos = posResult.data?.map((position: { id: string; title: string }) => ({
+          value: position.id,
+          label: position.title
+        })) || [];
+
         setDepartments(depts);
         setPositions(pos);
+        
       } catch (err) {
         console.error('Error cargando datos:', err);
         setError('Error cargando datos del formulario');
@@ -90,7 +175,6 @@ export function useFormData(organizationId: string): UseFormDataResult {
     };
 
     loadData();
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [organizationId]);
 
   return {

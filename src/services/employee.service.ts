@@ -28,8 +28,6 @@ export class EmployeeServiceImpl implements EmployeeService {
     try {
       const supabase = createSupabaseClient();
       
-      console.log('📋 Obteniendo empleados...');
-      
       const { data, error } = await supabase
         .from('employees')
         .select(`
@@ -56,11 +54,9 @@ export class EmployeeServiceImpl implements EmployeeService {
         .order('created_at', { ascending: false });
 
       if (error) {
-        console.error('❌ Error obteniendo empleados:', error);
         throw error;
       }
 
-      console.log('✅ Empleados obtenidos:', data?.length || 0);
       return data || [];
     } catch (error) {
       console.error('💥 Error en getEmployees:', error);

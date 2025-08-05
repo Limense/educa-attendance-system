@@ -128,15 +128,16 @@ export class FormDataServiceImpl implements FormDataService {
   }
 
   /**
-   * Obtener estados de empleado disponibles
+   * Obtener estados de empleado disponibles - SOLO LOS QUE USAMOS
    */
   getEmployeeStatuses(): FormDataOption[] {
     return [
       { value: 'active', label: 'Activo' },
-      { value: 'inactive', label: 'Inactivo' },
-      { value: 'suspended', label: 'Suspendido' },
-      { value: 'terminated', label: 'Terminado' },
-      { value: 'on_leave', label: 'En Licencia' }
+      { value: 'inactive', label: 'Inactivo' }
+      // Estados futuros (comentados por ahora):
+      // { value: 'suspended', label: 'Suspendido' },
+      // { value: 'terminated', label: 'Terminado' },
+      // { value: 'on_leave', label: 'En Licencia' }
     ];
   }
 }

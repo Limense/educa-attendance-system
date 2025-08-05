@@ -15,14 +15,15 @@
 'use client';
 
 import React, { useState } from 'react';
-import { EmployeeTabs } from './EmployeeTabs';
-import { EmployeeHeader } from './EmployeeHeader';
-import { AttendanceOverview } from './AttendanceOverview';
-import { AttendanceDetails } from './AttendanceDetails';
-import { EmployeeProfile } from './EmployeeProfile';
+import { 
+  EmployeeTabs, 
+  EmployeeHeader, 
+  AttendanceOverview, 
+  AttendanceDetails, 
+  EmployeeProfile,
+  type EmployeeTabType 
+} from '.';
 import type { Employee } from '@/types/database';
-
-export type EmployeeTabType = 'attendance' | 'history' | 'profile';
 
 interface EmployeeDashboardProps {
   employee: Employee;

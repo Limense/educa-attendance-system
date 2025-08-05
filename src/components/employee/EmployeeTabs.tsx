@@ -10,7 +10,9 @@
 'use client';
 
 import React from 'react';
-import type { EmployeeTabType } from './EmployeeDashboard';
+
+// Definir el tipo aquí para evitar dependencias circulares
+export type EmployeeTabType = 'attendance' | 'history' | 'profile';
 
 interface EmployeeTabsProps {
   activeTab: EmployeeTabType;

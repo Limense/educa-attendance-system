@@ -9,11 +9,10 @@
 
 // Componente principal
 export { EmployeeDashboard } from './EmployeeDashboard';
-export type { EmployeeTabType } from './EmployeeDashboard';
 
-// Componentes de UI
+// Componentes de UI con tipos
 export { EmployeeHeader } from './EmployeeHeader';
-export { EmployeeTabs } from './EmployeeTabs';
+export { EmployeeTabs, type EmployeeTabType } from './EmployeeTabs';
 
 // Vistas de contenido
 export { AttendanceOverview } from './AttendanceOverview';
