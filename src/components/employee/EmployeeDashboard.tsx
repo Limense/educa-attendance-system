@@ -23,6 +23,8 @@ import {
   EmployeeProfile,
   type EmployeeTabType 
 } from '.';
+import { AttendanceCalendar } from './AttendanceCalendar';
+import { PersonalReports } from './PersonalReports';
 import type { Employee } from '@/types/database';
 
 interface EmployeeDashboardProps {
@@ -41,6 +43,10 @@ export function EmployeeDashboard({ employee, onLogout }: EmployeeDashboardProps
     switch (activeTab) {
       case 'attendance':
         return <AttendanceOverview employeeId={employee.id} />;
+      case 'calendar':
+        return <AttendanceCalendar employeeId={employee.id} />;
+      case 'reports':
+        return <PersonalReports employeeId={employee.id} employee={employee} />;
       case 'history':
         return <AttendanceDetails employeeId={employee.id} />;
       case 'profile':

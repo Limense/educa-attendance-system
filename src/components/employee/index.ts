@@ -16,5 +16,7 @@ export { EmployeeTabs, type EmployeeTabType } from './EmployeeTabs';
 
 // Vistas de contenido
 export { AttendanceOverview } from './AttendanceOverview';
+export { AttendanceCalendar } from './AttendanceCalendar';
+export { PersonalReports } from './PersonalReports';
 export { AttendanceDetails } from './AttendanceDetails';
 export { EmployeeProfile } from './EmployeeProfile';

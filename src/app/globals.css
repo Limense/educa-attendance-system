@@ -487,3 +487,97 @@ html {
   color: #718096;
   font-size: 1.125rem;
 }
+
+/* =============================================
+   CALENDAR SPECIFIC STYLES
+   ============================================= */
+
+.calendar-grid {
+  display: grid;
+  grid-template-columns: repeat(7, 1fr);
+  gap: 0.5rem;
+}
+
+.calendar-day-hover {
+  transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+.calendar-day-hover:hover {
+  transform: scale(1.05);
+  z-index: 10;
+}
+
+.calendar-status-complete {
+  background: linear-gradient(135deg, #dcfce7 0%, #bbf7d0 100%);
+  border-color: #16a34a;
+  color: #166534;
+  box-shadow: 0 1px 3px rgba(34, 197, 94, 0.2);
+}
+
+.calendar-status-incomplete {
+  background: linear-gradient(135deg, #fef3c7 0%, #fde68a 100%);
+  border-color: #d97706;
+  color: #92400e;
+  box-shadow: 0 1px 3px rgba(245, 158, 11, 0.2);
+}
+
+.calendar-status-absent {
+  background: linear-gradient(135deg, #fecaca 0%, #fca5a5 100%);
+  border-color: #dc2626;
+  color: #991b1b;
+  box-shadow: 0 1px 3px rgba(239, 68, 68, 0.2);
+}
+
+.calendar-legend-item {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  padding: 0.5rem;
+  border-radius: 0.5rem;
+  transition: all 0.2s ease;
+}
+
+.calendar-legend-item:hover {
+  background: var(--surface-hover);
+  transform: translateY(-1px);
+}
+
+.calendar-navigation {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 0.5rem;
+  padding: 0.5rem;
+  transition: all 0.2s ease;
+  color: var(--text-secondary);
+}
+
+.calendar-navigation:hover {
+  background: var(--surface-hover);
+  border-color: var(--primary);
+  color: var(--primary);
+  transform: translateY(-1px);
+}
+
+.calendar-today-button {
+  background: var(--gradient-primary);
+  color: white;
+  font-weight: 500;
+  padding: 0.5rem 1rem;
+  border-radius: 0.5rem;
+  transition: all 0.2s ease;
+  box-shadow: 0 2px 4px rgba(59, 130, 246, 0.3);
+}
+
+.calendar-today-button:hover {
+  transform: translateY(-1px);
+  box-shadow: 0 4px 8px rgba(59, 130, 246, 0.4);
+}
+
+@keyframes calendar-pulse {
+  0%, 100% {
+    opacity: 1;
+  }
+  50% {
+    opacity: 0.8;
+  }
+}

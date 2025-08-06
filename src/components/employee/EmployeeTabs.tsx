@@ -12,7 +12,7 @@
 import React from 'react';
 
 // Definir el tipo aquí para evitar dependencias circulares
-export type EmployeeTabType = 'attendance' | 'history' | 'profile';
+export type EmployeeTabType = 'attendance' | 'calendar' | 'reports' | 'history' | 'profile';
 
 interface EmployeeTabsProps {
   activeTab: EmployeeTabType;
@@ -30,10 +30,22 @@ const EMPLOYEE_TABS = [
     description: 'Control de entrada y salida'
   },
   {
+    id: 'calendar' as EmployeeTabType,
+    label: 'Calendario',
+    icon: '📅',
+    description: 'Vista mensual de asistencias'
+  },
+  {
+    id: 'reports' as EmployeeTabType,
+    label: 'Mis Reportes',
+    icon: '📊',
+    description: 'Reportes y estadísticas personales'
+  },
+  {
     id: 'history' as EmployeeTabType,
     label: 'Historial',
-    icon: '📊',
-    description: 'Registro de asistencias'
+    icon: '�',
+    description: 'Registro detallado de asistencias'
   },
   {
     id: 'profile' as EmployeeTabType,
