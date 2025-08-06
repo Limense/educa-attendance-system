@@ -12,7 +12,6 @@ export { AdminHeader } from './AdminHeader';
 export { AdminTabs } from './AdminTabs';
 export { DashboardOverview } from './DashboardOverview';
 export { EmployeeManagement } from './EmployeeManagement';
-export { ReportsSection } from './ReportsSection';
 export { SystemSettings } from './SystemSettings';
 
 export type { AdminTabType } from './AdminDashboard';

@@ -5,8 +5,8 @@ import { AdminTabs } from './AdminTabs';
 import { AdminHeader } from './AdminHeader';
 import { DashboardOverview } from './DashboardOverview';
 import { EmployeeManagement } from './EmployeeManagement';
-import { ReportsSection } from './ReportsSection';
 import { SystemSettings } from './SystemSettings';
+import { AdvancedReports } from './reports/AdvancedReports';
 
 export type AdminTabType = 'overview' | 'employees' | 'reports' | 'settings';
 
@@ -33,7 +33,7 @@ export function AdminDashboard({ userEmail, onLogout }: AdminDashboardProps) {
       case 'employees':
         return <EmployeeManagement />;
       case 'reports':
-        return <ReportsSection />;
+        return <AdvancedReports />;
       case 'settings':
         return <SystemSettings />;
       default:

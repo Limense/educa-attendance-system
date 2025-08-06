@@ -14,8 +14,6 @@ import { createSupabaseClient } from '@/lib/supabase/client';
 import type { Attendance, Employee } from '@/types/database';
 import { format, startOfMonth, endOfMonth, subMonths, parseISO, differenceInHours } from 'date-fns';
 import { es } from 'date-fns/locale';
-import { generateAttendanceReport } from '@/services/pdf-report.service';
-import { generateHTMLAttendanceReport } from '@/services/html-pdf-report.service';
 
 interface PersonalReportsProps {
   employeeId: string;
@@ -340,37 +338,15 @@ export function PersonalReports({ employeeId, employee }: PersonalReportsProps) 
   const stats = useReportStats(attendances, filters);
 
   const generatePDF = async () => {
-    try {
-      await generateAttendanceReport({
-        employee,
-        attendances,
-        period: {
-          startDate: filters.startDate,
-          endDate: filters.endDate
-        },
-        stats
-      });
-    } catch (error) {
-      console.error('Error generando PDF:', error);
-      alert('Error al generar el reporte PDF');
-    }
+    // TODO: Implementar generación de reportes desde cero
+    console.log('Datos para reporte:', { employee, attendances, stats });
+    alert('Funcionalidad de reportes en desarrollo');
   };
 
   const generateHTMLPDF = async () => {
-    try {
-      await generateHTMLAttendanceReport({
-        employee,
-        attendances,
-        period: {
-          startDate: filters.startDate,
-          endDate: filters.endDate
-        },
-        stats
-      });
-    } catch (error) {
-      console.error('Error generando PDF HTML:', error);
-      alert('Error al generar el reporte HTML');
-    }
+    // TODO: Implementar generación de reportes desde cero
+    console.log('Datos para reporte HTML:', { employee, attendances, stats });
+    alert('Funcionalidad de reportes en desarrollo');
   };
 
   if (error) {

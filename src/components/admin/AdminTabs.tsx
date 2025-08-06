@@ -6,7 +6,7 @@ import { Button } from '@/components/ui/button';
 import { 
   LayoutDashboard, 
   Users, 
-  FileText, 
+  FileBarChart,
   Settings 
 } from 'lucide-react';
 
@@ -37,9 +37,9 @@ const tabs: TabConfig[] = [
   },
   {
     id: 'reports',
-    label: 'Reportes',
-    icon: <FileText className="w-5 h-5" />,
-    description: 'Reportes de asistencia y análisis'
+    label: 'Reportes Avanzados',
+    icon: <FileBarChart className="w-5 h-5" />,
+    description: 'Reportes de asistencia, estadísticas y exportación'
   },
   {
     id: 'settings',
