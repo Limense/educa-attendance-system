@@ -24,7 +24,6 @@ import { useReportData } from '@/hooks/useReportData';
 import type { ReportFilters as IReportFilters } from '@/types/reports.types';
 import { 
   FileBarChart, 
-  Download, 
   RefreshCw,
   TrendingUp 
 } from 'lucide-react';
@@ -40,8 +39,6 @@ export function AdvancedReports() {
     reportType: 'general',
     period: 'week'  // Cambiar a week por defecto
   });
-
-  const [isExporting, setIsExporting] = useState(false);
   
   // Hook personalizado para cargar datos del reporte
   const { data, stats, loading, error, refreshData } = useReportData(filters);
@@ -52,20 +49,6 @@ export function AdvancedReports() {
 
   const handleRefresh = async () => {
     await refreshData();
-  };
-
-  const handleExport = async (format: 'pdf' | 'excel') => {
-    setIsExporting(true);
-    try {
-      // TODO: Implementar exportación con plantillas HTML
-      console.log('Exportando:', { format, data, stats, filters });
-      alert(`Exportación ${format.toUpperCase()} en desarrollo`);
-    } catch (error) {
-      console.error('Error exportando:', error);
-      alert('Error al exportar el reporte');
-    } finally {
-      setIsExporting(false);
-    }
   };
 
   if (error) {
@@ -116,25 +99,6 @@ export function AdvancedReports() {
             <RefreshCw className={`w-4 h-4 mr-2 ${loading ? 'animate-spin' : ''}`} />
             Actualizar
           </Button>
-          
-          <Button
-            onClick={() => handleExport('pdf')}
-            disabled={loading || isExporting || !data?.length}
-            className="flex items-center bg-red-600 hover:bg-red-700"
-          >
-            <Download className="w-4 h-4 mr-2" />
-            PDF
-          </Button>
-          
-          <Button
-            onClick={() => handleExport('excel')}
-            disabled={loading || isExporting || !data?.length}
-            variant="outline"
-            className="flex items-center"
-          >
-            <Download className="w-4 h-4 mr-2" />
-            Excel
-          </Button>
         </div>
       </div>
 
@@ -175,8 +139,8 @@ export function AdvancedReports() {
           data={data || []}
           stats={stats || undefined}
           filters={filters}
-          onExport={handleExport}
-          loading={isExporting}
+          onExport={() => {}} // Función vacía ya que ReportExport maneja su propia exportación
+          loading={false}
           disabled={loading || !data?.length}
         />
       </Card>
