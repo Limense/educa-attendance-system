@@ -7,7 +7,8 @@ import {
   LayoutDashboard, 
   Users, 
   FileBarChart,
-  Settings 
+  Settings,
+  TrendingUp
 } from 'lucide-react';
 
 interface AdminTabsProps {
@@ -34,6 +35,12 @@ const tabs: TabConfig[] = [
     label: 'Gestión de Empleados',
     icon: <Users className="w-5 h-5" />,
     description: 'Crear, editar y gestionar empleados'
+  },
+  {
+    id: 'analytics',
+    label: 'Analíticas Avanzadas',
+    icon: <TrendingUp className="w-5 h-5" />,
+    description: 'Análisis detallado de asistencia y horas trabajadas'
   },
   {
     id: 'reports',

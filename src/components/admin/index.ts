@@ -13,5 +13,8 @@ export { AdminTabs } from './AdminTabs';
 export { DashboardOverview } from './DashboardOverview';
 export { EmployeeManagement } from './EmployeeManagement';
 export { SystemSettings } from './SystemSettings';
+export { AllEmployeeAttendance } from './AllEmployeeAttendance';
+export { EmployeeScheduleConfig } from './EmployeeScheduleConfig';
+export { AdvancedAnalytics } from './AdvancedAnalytics';
 
 export type { AdminTabType } from './AdminDashboard';

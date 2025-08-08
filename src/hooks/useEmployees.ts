@@ -18,6 +18,14 @@ export interface Employee {
   is_active: boolean;
   created_at?: string;
   updated_at?: string;
+  work_schedule?: {
+    hours_per_day: number;
+    days_per_week: number;
+    start_time?: string;
+    end_time?: string;
+    break_duration?: number;
+    flexible_hours?: boolean;
+  };
   departments?: {
     id: string;
     name: string;

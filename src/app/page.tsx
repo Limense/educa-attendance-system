@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useState } from 'react';
+import { useEffect, useState, useCallback } from 'react';
 import { useRouter } from 'next/navigation';
 import { createSupabaseClient } from '@/lib/supabase/client';
 
@@ -8,11 +8,7 @@ export default function HomePage() {
   const router = useRouter();
   const [checking, setChecking] = useState(true);
 
-  useEffect(() => {
-    checkAuthAndRedirect();
-  }, []);
-
-  const checkAuthAndRedirect = async () => {
+  const checkAuthAndRedirect = useCallback(async () => {
     try {
       const supabase = createSupabaseClient();
       
@@ -59,7 +55,11 @@ export default function HomePage() {
     } finally {
       setChecking(false);
     }
-  };
+  }, [router]);
+
+  useEffect(() => {
+    checkAuthAndRedirect();
+  }, [checkAuthAndRedirect]);
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-blue-50 to-indigo-100 flex items-center justify-center">

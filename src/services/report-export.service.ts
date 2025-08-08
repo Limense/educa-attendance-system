@@ -51,7 +51,7 @@ export class ReportExportService {
           await this.exportToPDF(exportData, options);
           break;
         case 'excel':
-          await this.exportToExcel(exportData, options);
+          await this.exportToExcel(exportData);
           break;
         default:
           throw new Error(`Formato no soportado: ${options.format}`);
@@ -82,13 +82,12 @@ export class ReportExportService {
    * Exportar a Excel con datos estructurados
    */
   private static async exportToExcel(
-    exportData: ExportData, 
-    options: ExportOptions
+    exportData: ExportData
   ): Promise<void> {
     console.log('📊 Generando Excel...');
     
     // Generar archivo Excel (implementaremos esto)
-    await this.generateExcelFile(exportData, options);
+    await this.generateExcelFile(exportData);
   }
 
   /**
@@ -203,7 +202,8 @@ export class ReportExportService {
   ): string {
     const { data, metadata } = exportData;
     // Se conserva 'options' para futuras expansiones
-    const useOptions = options;
+    // eslint-disable-next-line @typescript-eslint/no-unused-vars
+    const _useOptions = options;
 
     return `
     <!DOCTYPE html>
@@ -617,7 +617,8 @@ export class ReportExportService {
   /**
    * Convertir HTML a PDF (placeholder para implementación)
    */
-  private static async convertHTMLToPDF(htmlContent: string, filename: string): Promise<void> {
+  // eslint-disable-next-line @typescript-eslint/no-unused-vars
+  private static async convertHTMLToPDF(htmlContent: string, _filename: string): Promise<void> {
     // Por ahora, abrimos el HTML en una nueva ventana para impresión
     const printWindow = window.open('', '_blank');
     if (printWindow) {
@@ -637,8 +638,7 @@ export class ReportExportService {
    * Generar archivo Excel (placeholder para implementación)
    */
   private static async generateExcelFile(
-    exportData: ExportData, 
-    options: ExportOptions
+    exportData: ExportData
   ): Promise<void> {
     // Por ahora, generamos CSV
     const csvContent = this.generateCSVContent(exportData.data);

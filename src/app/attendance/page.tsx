@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import { useRouter } from 'next/navigation';
 import { createSupabaseClient } from '@/lib/supabase/client';
 
@@ -30,14 +30,7 @@ export default function AttendancePage() {
   const [actionLoading, setActionLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
-  useEffect(() => {
-    // Cambiar título de la página
-    document.title = "Registro de Asistencias - Educa Attendance";
-    
-    checkAuthAndLoadData();
-  }, []);
-
-  const checkAuthAndLoadData = async () => {
+  const checkAuthAndLoadData = useCallback(async () => {
     try {
       const supabase = createSupabaseClient();
       
@@ -76,7 +69,14 @@ export default function AttendancePage() {
     } finally {
       setLoading(false);
     }
-  };
+  }, [router]);
+
+  useEffect(() => {
+    // Cambiar título de la página
+    document.title = "Registro de Asistencias - Educa Attendance";
+    
+    checkAuthAndLoadData();
+  }, [checkAuthAndLoadData]);
 
   const loadTodayAttendance = async (employeeId: string) => {
     const supabase = createSupabaseClient();

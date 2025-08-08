@@ -270,34 +270,246 @@ export class SystemConfigService {
   }
 
   /**
-   * Actualizar horarios de trabajo
+   * Configurar horario individual para un empleado
    */
-  async updateWorkingHours(organizationId: string, hours: {
-    startTime: string;
-    endTime: string;
-    lunchStart: string;
-    lunchEnd: string;
-  }): Promise<void> {
+  async setEmployeeWorkSchedule(
+    employeeId: string, 
+    schedule: {
+      hours_per_day: number;
+      days_per_week: number;
+      start_time?: string;
+      end_time?: string;
+      break_duration?: number;
+      flexible_hours?: boolean;
+    }
+  ): Promise<void> {
     try {
-      // Calcular duración del almuerzo
-      const [lunchStartHour, lunchStartMinute] = hours.lunchStart.split(':').map(Number);
-      const [lunchEndHour, lunchEndMinute] = hours.lunchEnd.split(':').map(Number);
-      const breakDuration = (lunchEndHour * 60 + lunchEndMinute) - (lunchStartHour * 60 + lunchStartMinute);
-
       const { error } = await this.supabase
-        .from('work_policies')
+        .from('employees')
         .update({
-          start_time: hours.startTime,
-          end_time: hours.endTime,
-          break_duration: breakDuration
+          work_schedule: schedule,
+          updated_at: new Date().toISOString()
         })
-        .eq('organization_id', organizationId)
-        .eq('is_active', true);
+        .eq('id', employeeId);
 
       if (error) throw error;
     } catch (error) {
+      console.error('Error setting employee work schedule:', error);
+      throw new Error('Error al configurar horario del empleado');
+    }
+  }
+
+  /**
+   * Obtener horario individual de un empleado
+   */
+  async getEmployeeWorkSchedule(employeeId: string): Promise<{
+    hours_per_day: number;
+    days_per_week: number;
+    start_time?: string;
+    end_time?: string;
+    break_duration?: number;
+    flexible_hours?: boolean;
+  }> {
+    try {
+      const { data, error } = await this.supabase
+        .from('employees')
+        .select('work_schedule')
+        .eq('id', employeeId)
+        .single();
+
+      if (error) throw error;
+
+      return data?.work_schedule || {
+        hours_per_day: 8,
+        days_per_week: 5,
+        start_time: '09:00',
+        end_time: '17:00',
+        break_duration: 60,
+        flexible_hours: false
+      };
+    } catch (error) {
+      console.error('Error getting employee work schedule:', error);
+      return {
+        hours_per_day: 8,
+        days_per_week: 5,
+        start_time: '09:00',
+        end_time: '17:00',
+        break_duration: 60,
+        flexible_hours: false
+      };
+    }
+  }
+
+  /**
+   * Actualizar horarios de trabajo generales
+   */
+  async updateWorkingHours(
+    organizationId: string,
+    hours: {
+      startTime: string;
+      endTime: string;
+      lunchStart: string;
+      lunchEnd: string;
+    }
+  ): Promise<void> {
+    try {
+      // Calcular duración del almuerzo
+      const lunchStart = new Date(`2000-01-01 ${hours.lunchStart}`);
+      const lunchEnd = new Date(`2000-01-01 ${hours.lunchEnd}`);
+      const breakDuration = (lunchEnd.getTime() - lunchStart.getTime()) / (1000 * 60); // en minutos
+
+      // Verificar si existe una política activa
+      const { data: existingPolicy, error: fetchError } = await this.supabase
+        .from('work_policies')
+        .select('id')
+        .eq('organization_id', organizationId)
+        .eq('is_active', true)
+        .limit(1)
+        .single();
+
+      if (fetchError && fetchError.code !== 'PGRST116') {
+        throw fetchError;
+      }
+
+      if (existingPolicy) {
+        // Actualizar política existente
+        const { error } = await this.supabase
+          .from('work_policies')
+          .update({
+            start_time: hours.startTime,
+            end_time: hours.endTime,
+            break_duration: breakDuration
+          })
+          .eq('id', existingPolicy.id);
+
+        if (error) throw error;
+      } else {
+        // Crear nueva política
+        const { error } = await this.supabase
+          .from('work_policies')
+          .insert({
+            organization_id: organizationId,
+            name: 'Horario General',
+            start_time: hours.startTime,
+            end_time: hours.endTime,
+            break_duration: breakDuration,
+            late_threshold: 15,
+            working_days: 5,
+            is_active: true
+          });
+
+        if (error) throw error;
+      }
+    } catch (error) {
       console.error('Error updating working hours:', error);
       throw new Error('Error al actualizar horarios de trabajo');
+    }
+  }
+  async updateWorkPolicies(
+    organizationId: string,
+    policies: {
+      late_threshold?: number;
+      max_daily_hours?: number;
+      allow_remote?: boolean;
+      require_geolocation?: boolean;
+      working_days?: number;
+    }
+  ): Promise<void> {
+    try {
+      // Verificar si existe una política activa
+      const { data: existingPolicy, error: fetchError } = await this.supabase
+        .from('work_policies')
+        .select('id')
+        .eq('organization_id', organizationId)
+        .eq('is_active', true)
+        .limit(1)
+        .single();
+
+      if (fetchError && fetchError.code !== 'PGRST116') {
+        throw fetchError;
+      }
+
+      if (existingPolicy) {
+        // Actualizar política existente
+        const { error } = await this.supabase
+          .from('work_policies')
+          .update(policies)
+          .eq('id', existingPolicy.id);
+
+        if (error) throw error;
+      } else {
+        // Crear nueva política
+        const { error } = await this.supabase
+          .from('work_policies')
+          .insert({
+            organization_id: organizationId,
+            name: 'Política Principal',
+            start_time: '08:00',
+            end_time: '17:00',
+            break_duration: 60,
+            working_days: 5,
+            is_active: true,
+            ...policies
+          });
+
+        if (error) throw error;
+      }
+    } catch (error) {
+      console.error('Error updating work policies:', error);
+      // Proporcionar información más específica del error
+      if (error && typeof error === 'object' && 'message' in error) {
+        throw new Error(`Error al actualizar políticas de trabajo: ${error.message}`);
+      }
+      throw new Error('Error al actualizar políticas de trabajo');
+    }
+  }
+
+  /**
+   * Obtener políticas de trabajo actuales
+   */
+  async getCurrentWorkPolicies(organizationId: string): Promise<{
+    late_threshold: number;
+    max_daily_hours: number;
+    allow_remote: boolean;
+    require_geolocation: boolean;
+    working_days: number;
+  }> {
+    try {
+      const { data, error } = await this.supabase
+        .from('work_policies')
+        .select('late_threshold, max_daily_hours, allow_remote, require_geolocation, working_days')
+        .eq('organization_id', organizationId)
+        .eq('is_active', true)
+        .limit(1)
+        .single();
+
+      if (error || !data) {
+        // Valores por defecto si no hay configuración
+        return {
+          late_threshold: 15,
+          max_daily_hours: 8,
+          allow_remote: false,
+          require_geolocation: true,
+          working_days: 5
+        };
+      }
+
+      return {
+        late_threshold: data.late_threshold || 15,
+        max_daily_hours: data.max_daily_hours || 8,
+        allow_remote: data.allow_remote || false,
+        require_geolocation: data.require_geolocation || true,
+        working_days: data.working_days || 5
+      };
+    } catch (error) {
+      console.error('Error fetching current work policies:', error);
+      return {
+        late_threshold: 15,
+        max_daily_hours: 8,
+        allow_remote: false,
+        require_geolocation: true,
+        working_days: 5
+      };
     }
   }
 }

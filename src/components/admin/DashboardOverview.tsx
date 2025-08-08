@@ -1,252 +1,288 @@
-'use client'
+/**
+ * =============================================
+ * DASHBOARD OVERVIEW MEJORADO CON ANALÍTICAS
+ * =============================================
+ * 
+ * Panel principal con KPIs, gráficos interactivos y alertas inteligentes
+ */
 
-import React, { useState, useEffect } from 'react';
+'use client';
+
+import React, { useState } from 'react';
 import { Card } from '@/components/ui/card';
+import { Button } from '@/components/ui/button';
 import { 
-  Users, 
-  Clock, 
-  TrendingUp, 
-  AlertCircle,
-  Calendar,
-  Building
+  BarChart3,
+  LineChart,
+  AlertTriangle,
+  RefreshCw,
+  TrendingUp,
+  Activity,
+  Bell
 } from 'lucide-react';
-import { dashboardService, DashboardStats, TodayAttendance, MonthlyTrends } from '@/services/dashboard.service';
+import { useDashboardAnalytics } from '@/hooks/useDashboardAnalytics';
+import { DashboardKPIsComponent } from './analytics/DashboardKPIs';
+import { DashboardCharts } from './analytics/DashboardCharts';
+import { DashboardAlerts } from './analytics/DashboardAlerts';
+import { AllEmployeeAttendance } from './AllEmployeeAttendance';
 
-interface StatCardProps {
-  title: string;
-  value: string | number;
-  icon: React.ReactNode;
-  change?: string;
-  changeType?: 'positive' | 'negative' | 'neutral';
-  loading?: boolean;
-}
-
-function StatCard({ title, value, icon, change, changeType = 'neutral', loading = false }: StatCardProps) {
-  const changeColor = {
-    positive: 'text-green-600',
-    negative: 'text-red-600',
-    neutral: 'text-gray-600'
-  }[changeType];
-
-  return (
-    <Card className="p-6">
-      <div className="flex items-center">
-        <div className="flex-shrink-0">
-          <div className="w-8 h-8 text-blue-600">
-            {icon}
-          </div>
-        </div>
-        <div className="ml-5 w-0 flex-1">
-          <dl>
-            <dt className="text-sm font-medium text-gray-500 truncate">
-              {title}
-            </dt>
-            <dd className="flex items-baseline">
-              <div className="text-2xl font-semibold text-gray-900">
-                {loading ? (
-                  <div className="animate-pulse bg-gray-200 h-8 w-16 rounded"></div>
-                ) : (
-                  value
-                )}
-              </div>
-              {change && !loading && (
-                <div className={`ml-2 flex items-baseline text-sm font-semibold ${changeColor}`}>
-                  {change}
-                </div>
-              )}
-            </dd>
-          </dl>
-        </div>
-      </div>
-    </Card>
-  );
-}
+type DashboardView = 'overview' | 'charts' | 'alerts';
 
 /**
- * Componente del dashboard general con estadísticas reales de Supabase
+ * Componente principal del dashboard con analíticas avanzadas
  * 
- * Principios aplicados:
- * - Single Responsibility: Solo muestra estadísticas generales
- * - DRY: Reutiliza componente StatCard
- * - Data Fetching: Consume datos reales de la base de datos
+ * Funcionalidades:
+ * - KPIs en tiempo real con indicadores de tendencia
+ * - Gráficos interactivos (líneas, barras, áreas, pie)
+ * - Sistema de alertas inteligentes
+ * - Navegación entre vistas
  */
 export function DashboardOverview() {
-  const [stats, setStats] = useState<DashboardStats | null>(null);
-  const [todayAttendance, setTodayAttendance] = useState<TodayAttendance | null>(null);
-  const [monthlyTrends, setMonthlyTrends] = useState<MonthlyTrends | null>(null);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
+  const [currentView, setCurrentView] = useState<DashboardView>('overview');
+  
+  // Hook personalizado para obtener todas las analíticas
+  const {
+    kpis,
+    weeklyTrend,
+    monthlyTrend,
+    departmentMetrics,
+    recentAlerts,
+    loading,
+    error,
+    refreshData
+  } = useDashboardAnalytics();
 
-  // TODO: Obtener organizationId del contexto de autenticación
-  const organizationId = '550e8400-e29b-41d4-a716-446655440000';
-
-  useEffect(() => {
-    const fetchDashboardData = async () => {
-      try {
-        setLoading(true);
-        const [statsData, todayData, trendsData] = await Promise.all([
-          dashboardService.getDashboardStats(organizationId),
-          dashboardService.getTodayAttendance(organizationId),
-          dashboardService.getMonthlyTrends(organizationId)
-        ]);
-
-        setStats(statsData);
-        setTodayAttendance(todayData);
-        setMonthlyTrends(trendsData);
-        setError(null);
-      } catch (err) {
-        console.error('Error fetching dashboard data:', err);
-        setError('Error al cargar datos del dashboard');
-      } finally {
-        setLoading(false);
-      }
-    };
-
-    fetchDashboardData();
-  }, [organizationId]);
-
+  // Manejo de errores
   if (error) {
     return (
       <div className="p-6">
-        <Card className="p-6">
+        <Card className="p-8">
           <div className="text-center">
-            <AlertCircle className="w-12 h-12 text-red-500 mx-auto mb-4" />
-            <h3 className="text-lg font-semibold text-gray-900 mb-2">Error al cargar datos</h3>
-            <p className="text-gray-600">{error}</p>
+            <AlertTriangle className="w-16 h-16 text-red-500 mx-auto mb-4" />
+            <h3 className="text-xl font-semibold text-gray-900 mb-2">Error al cargar analíticas</h3>
+            <p className="text-gray-600 mb-4">{error}</p>
+            <Button onClick={refreshData} className="flex items-center space-x-2">
+              <RefreshCw className="w-4 h-4" />
+              <span>Reintentar</span>
+            </Button>
           </div>
         </Card>
       </div>
     );
   }
 
-  const attendanceRateColor = (stats?.attendanceRate || 0) >= 90 ? 'positive' : 
-                             (stats?.attendanceRate || 0) >= 75 ? 'neutral' : 'negative';
+  // Conteo de alertas críticas para badge
+  const criticalAlertsCount = recentAlerts.filter(alert => alert.type === 'critical').length;
+  const totalActiveAlerts = recentAlerts.length;
+
+  // Calcular tendencias básicas desde los datos semanales
+  const calculateWeeklyChange = () => {
+    if (weeklyTrend.length < 2) return { attendanceChange: 0, punctualityChange: 0 };
+    
+    const recent = weeklyTrend[weeklyTrend.length - 1];
+    const previous = weeklyTrend[weeklyTrend.length - 2];
+    
+    return {
+      attendanceChange: recent.attendanceRate - previous.attendanceRate,
+      punctualityChange: ((recent.present - recent.late) / recent.total * 100) - 
+                        ((previous.present - previous.late) / previous.total * 100)
+    };
+  };
+
+  const trends = calculateWeeklyChange();
 
   return (
-    <div className="p-6">
-      <div className="mb-8">
-        <h2 className="text-2xl font-bold text-gray-900 mb-2">
-          Resumen General
-        </h2>
-        <p className="text-gray-600">
-          Vista general del estado actual del sistema de asistencia
-        </p>
+    <div className="p-6 space-y-6">
+      
+      {/* Header con navegación y controles */}
+      <div className="flex flex-col lg:flex-row lg:items-center lg:justify-between space-y-4 lg:space-y-0">
+        <div>
+          <h2 className="text-3xl font-bold text-gray-900 flex items-center space-x-3">
+            <Activity className="w-8 h-8 text-blue-600" />
+            <span>Panel de Analíticas</span>
+          </h2>
+          <p className="text-gray-600 mt-1">
+            Métricas en tiempo real, tendencias y alertas inteligentes
+          </p>
+        </div>
+        
+        <div className="flex items-center space-x-3">
+          {/* Navegación de vistas */}
+          <div className="flex bg-gray-100 rounded-lg p-1">
+            <Button
+              variant={currentView === 'overview' ? 'default' : 'ghost'}
+              size="sm"
+              onClick={() => setCurrentView('overview')}
+              className="flex items-center space-x-2"
+            >
+              <TrendingUp className="w-4 h-4" />
+              <span>KPIs</span>
+            </Button>
+            <Button
+              variant={currentView === 'charts' ? 'default' : 'ghost'}
+              size="sm"
+              onClick={() => setCurrentView('charts')}
+              className="flex items-center space-x-2"
+            >
+              <BarChart3 className="w-4 h-4" />
+              <span>Gráficos</span>
+            </Button>
+            <Button
+              variant={currentView === 'alerts' ? 'default' : 'ghost'}
+              size="sm"
+              onClick={() => setCurrentView('alerts')}
+              className="flex items-center space-x-2 relative"
+            >
+              <Bell className="w-4 h-4" />
+              <span>Alertas</span>
+              {criticalAlertsCount > 0 && (
+                <span className="absolute -top-1 -right-1 bg-red-500 text-white text-xs rounded-full h-5 w-5 flex items-center justify-center">
+                  {criticalAlertsCount}
+                </span>
+              )}
+            </Button>
+          </div>
+          
+          {/* Botón de actualización */}
+          <Button
+            onClick={refreshData}
+            disabled={loading}
+            size="sm"
+            variant="outline"
+            className="flex items-center space-x-2"
+          >
+            <RefreshCw className={`w-4 h-4 ${loading ? 'animate-spin' : ''}`} />
+            <span>Actualizar</span>
+          </Button>
+        </div>
       </div>
 
-      {/* Tarjetas de estadísticas principales */}
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
-        <StatCard
-          title="Total de Empleados"
-          value={stats?.totalEmployees || 0}
-          icon={<Users className="w-8 h-8" />}
-          loading={loading}
-        />
-        <StatCard
-          title="Presentes Hoy"
-          value={stats?.presentToday || 0}
-          icon={<Clock className="w-8 h-8" />}
-          change={`${stats?.attendanceRate || 0}%`}
-          changeType={attendanceRateColor}
-          loading={loading}
-        />
-        <StatCard
-          title="Tardanzas del Día"
-          value={stats?.lateToday || 0}
-          icon={<AlertCircle className="w-8 h-8" />}
-          changeType="negative"
-          loading={loading}
-        />
-        <StatCard
-          title="Departamentos"
-          value={stats?.totalDepartments || 0}
-          icon={<Building className="w-8 h-8" />}
-          loading={loading}
-        />
+      {/* Resumen rápido de alertas críticas (siempre visible) */}
+      {criticalAlertsCount > 0 && currentView !== 'alerts' && (
+        <Card className="bg-red-50 border-red-200 p-4">
+          <div className="flex items-center justify-between">
+            <div className="flex items-center space-x-3">
+              <AlertTriangle className="w-5 h-5 text-red-600" />
+              <div>
+                <p className="text-sm font-medium text-red-800">
+                  {criticalAlertsCount} alerta{criticalAlertsCount > 1 ? 's' : ''} crítica{criticalAlertsCount > 1 ? 's' : ''} requiere{criticalAlertsCount === 1 ? '' : 'n'} atención
+                </p>
+                <p className="text-xs text-red-600">
+                  {totalActiveAlerts} alertas activas en total
+                </p>
+              </div>
+            </div>
+            <Button
+              onClick={() => setCurrentView('alerts')}
+              size="sm"
+              variant="outline"
+              className="border-red-300 text-red-700 hover:bg-red-100"
+            >
+              Ver Alertas
+            </Button>
+          </div>
+        </Card>
+      )}
+
+      {/* Contenido principal según la vista seleccionada */}
+      <div className="min-h-[600px]">
+        {currentView === 'overview' && (
+          <div className="space-y-6">
+            {/* KPIs principales */}
+            <DashboardKPIsComponent 
+              kpis={kpis} 
+              loading={loading} 
+            />
+            
+            {/* Información adicional */}
+            <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+              <Card className="p-6">
+                <h3 className="text-lg font-semibold text-gray-900 mb-4 flex items-center">
+                  <TrendingUp className="w-5 h-5 mr-2 text-blue-600" />
+                  Tendencias Recientes
+                </h3>
+                {loading ? (
+                  <div className="space-y-3">
+                    {[1, 2, 3].map((i) => (
+                      <div key={i} className="animate-pulse flex justify-between items-center">
+                        <div className="bg-gray-200 h-4 w-32 rounded"></div>
+                        <div className="bg-gray-200 h-4 w-16 rounded"></div>
+                      </div>
+                    ))}
+                  </div>
+                ) : (
+                  <div className="space-y-3">
+                    <div className="flex justify-between items-center">
+                      <span className="text-gray-600">Asistencia vs. semana pasada</span>
+                      <span className={`font-semibold ${
+                        trends.attendanceChange >= 0 ? 'text-green-600' : 'text-red-600'
+                      }`}>
+                        {trends.attendanceChange >= 0 ? '+' : ''}{trends.attendanceChange.toFixed(1)}%
+                      </span>
+                    </div>
+                    <div className="flex justify-between items-center">
+                      <span className="text-gray-600">Puntualidad vs. semana pasada</span>
+                      <span className={`font-semibold ${
+                        trends.punctualityChange >= 0 ? 'text-green-600' : 'text-red-600'
+                      }`}>
+                        {trends.punctualityChange >= 0 ? '+' : ''}{trends.punctualityChange.toFixed(1)}%
+                      </span>
+                    </div>
+                    <div className="flex justify-between items-center">
+                      <span className="text-gray-600">Mejor departamento</span>
+                      <span className="font-semibold text-blue-600">
+                        {departmentMetrics.length > 0 ? departmentMetrics[0].department : 'N/A'}
+                      </span>
+                    </div>
+                  </div>
+                )}
+              </Card>
+
+              <Card className="p-6">
+                <h3 className="text-lg font-semibold text-gray-900 mb-4 flex items-center">
+                  <LineChart className="w-5 h-5 mr-2 text-purple-600" />
+                  Vista Rápida de Gráficos
+                </h3>
+                <div className="text-center py-8">
+                  <BarChart3 className="w-16 h-16 text-gray-300 mx-auto mb-4" />
+                  <p className="text-gray-500 mb-4">
+                    Accede a gráficos interactivos detallados
+                  </p>
+                  <Button
+                    onClick={() => setCurrentView('charts')}
+                    className="flex items-center space-x-2"
+                  >
+                    <LineChart className="w-4 h-4" />
+                    <span>Ver Gráficos Completos</span>
+                  </Button>
+                </div>
+              </Card>
+            </div>
+          </div>
+        )}
+
+        {currentView === 'charts' && (
+          <DashboardCharts 
+            weeklyTrend={weeklyTrend}
+            monthlyTrend={monthlyTrend}
+            departmentMetrics={departmentMetrics}
+            loading={loading}
+          />
+        )}
+
+        {currentView === 'alerts' && (
+          <DashboardAlerts 
+            alerts={recentAlerts}
+            criticalCount={criticalAlertsCount}
+            warningCount={recentAlerts.filter(alert => alert.type === 'warning').length}
+            loading={loading}
+          />
+        )}
       </div>
 
-      {/* Sección de detalles */}
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-        <Card className="p-6">
-          <h3 className="text-lg font-semibold text-gray-900 mb-4 flex items-center">
-            <Calendar className="w-5 h-5 mr-2" />
-            Asistencias de Hoy
-          </h3>
-          {loading ? (
-            <div className="space-y-3">
-              {[1, 2, 3].map((i) => (
-                <div key={i} className="animate-pulse flex justify-between items-center">
-                  <div className="bg-gray-200 h-4 w-32 rounded"></div>
-                  <div className="bg-gray-200 h-4 w-12 rounded"></div>
-                </div>
-              ))}
-            </div>
-          ) : (
-            <div className="space-y-3">
-              <div className="flex justify-between items-center">
-                <span className="text-gray-600">Entradas registradas</span>
-                <span className="font-semibold">{todayAttendance?.checkInsToday || 0}</span>
-              </div>
-              <div className="flex justify-between items-center">
-                <span className="text-gray-600">Salidas registradas</span>
-                <span className="font-semibold">{todayAttendance?.checkOutsToday || 0}</span>
-              </div>
-              <div className="flex justify-between items-center">
-                <span className="text-gray-600">Empleados ausentes</span>
-                <span className="font-semibold text-red-600">{stats?.absentToday || 0}</span>
-              </div>
-              <div className="flex justify-between items-center">
-                <span className="text-gray-600">Horas extra hoy</span>
-                <span className="font-semibold text-blue-600">{stats?.overtimeHours || 0}h</span>
-              </div>
-            </div>
-          )}
-        </Card>
-
-        <Card className="p-6">
-          <h3 className="text-lg font-semibold text-gray-900 mb-4 flex items-center">
-            <TrendingUp className="w-5 h-5 mr-2" />
-            Tendencias del Mes
-          </h3>
-          {loading ? (
-            <div className="space-y-3">
-              {[1, 2, 3, 4].map((i) => (
-                <div key={i} className="animate-pulse flex justify-between items-center">
-                  <div className="bg-gray-200 h-4 w-32 rounded"></div>
-                  <div className="bg-gray-200 h-4 w-16 rounded"></div>
-                </div>
-              ))}
-            </div>
-          ) : (
-            <div className="space-y-3">
-              <div className="flex justify-between items-center">
-                <span className="text-gray-600">Puntualidad promedio</span>
-                <span className={`font-semibold ${
-                  (monthlyTrends?.punctualityRate || 0) >= 90 ? 'text-green-600' : 
-                  (monthlyTrends?.punctualityRate || 0) >= 75 ? 'text-yellow-600' : 'text-red-600'
-                }`}>
-                  {monthlyTrends?.punctualityRate || 0}%
-                </span>
-              </div>
-              <div className="flex justify-between items-center">
-                <span className="text-gray-600">Ausentismo</span>
-                <span className={`font-semibold ${
-                  (monthlyTrends?.absenteeismRate || 0) <= 5 ? 'text-green-600' : 
-                  (monthlyTrends?.absenteeismRate || 0) <= 10 ? 'text-yellow-600' : 'text-red-600'
-                }`}>
-                  {monthlyTrends?.absenteeismRate || 0}%
-                </span>
-              </div>
-              <div className="flex justify-between items-center">
-                <span className="text-gray-600">Horas extra del mes</span>
-                <span className="font-semibold">{monthlyTrends?.overtimeHours || 0}h</span>
-              </div>
-              <div className="flex justify-between items-center">
-                <span className="text-gray-600">Promedio horas diarias</span>
-                <span className="font-semibold">{monthlyTrends?.averageWorkHours || 0}h</span>
-              </div>
-            </div>
-          )}
-        </Card>
+      {/* Sección de Asistencias de Todos los Empleados - Siempre visible debajo del panel principal */}
+      <div className="mt-8">
+        <AllEmployeeAttendance />
       </div>
     </div>
   );

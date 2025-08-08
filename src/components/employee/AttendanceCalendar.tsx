@@ -9,7 +9,7 @@
 
 'use client';
 
-import React, { useState, useEffect, useMemo } from 'react';
+import React, { useState, useEffect, useMemo, useCallback } from 'react';
 import { createSupabaseClient } from '@/lib/supabase/client';
 import type { Attendance } from '@/types/database';
 
@@ -39,7 +39,7 @@ function useCalendarData(employeeId: string, currentDate: Date) {
   const [attendances, setAttendances] = useState<Attendance[]>([]);
   const [loading, setLoading] = useState(false);
 
-  const loadMonthAttendances = async (year: number, month: number) => {
+  const loadMonthAttendances = useCallback(async (year: number, month: number) => {
     try {
       setLoading(true);
       const supabase = createSupabaseClient();
@@ -64,11 +64,11 @@ function useCalendarData(employeeId: string, currentDate: Date) {
     } finally {
       setLoading(false);
     }
-  };
+  }, [employeeId]);
 
   useEffect(() => {
     loadMonthAttendances(currentDate.getFullYear(), currentDate.getMonth());
-  }, [employeeId, currentDate]);
+  }, [employeeId, currentDate, loadMonthAttendances]);
 
   return { attendances, loading, refreshAttendances: () => loadMonthAttendances(currentDate.getFullYear(), currentDate.getMonth()) };
 }

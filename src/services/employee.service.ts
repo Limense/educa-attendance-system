@@ -41,6 +41,7 @@ export class EmployeeServiceImpl implements EmployeeService {
           is_active,
           created_at,
           updated_at,
+          work_schedule,
           departments:department_id (
             id,
             name

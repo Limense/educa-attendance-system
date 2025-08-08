@@ -7,8 +7,9 @@ import { DashboardOverview } from './DashboardOverview';
 import { EmployeeManagement } from './EmployeeManagement';
 import { SystemSettings } from './SystemSettings';
 import { AdvancedReports } from './reports/AdvancedReports';
+import { AdvancedAnalytics } from './AdvancedAnalytics';
 
-export type AdminTabType = 'overview' | 'employees' | 'reports' | 'settings';
+export type AdminTabType = 'overview' | 'employees' | 'analytics' | 'reports' | 'settings';
 
 interface AdminDashboardProps {
   userEmail?: string;
@@ -32,6 +33,15 @@ export function AdminDashboard({ userEmail, onLogout }: AdminDashboardProps) {
         return <DashboardOverview />;
       case 'employees':
         return <EmployeeManagement />;
+      case 'analytics':
+        return (
+          <AdvancedAnalytics 
+            dateRange={{
+              startDate: new Date(Date.now() - 30 * 24 * 60 * 60 * 1000).toISOString().split('T')[0],
+              endDate: new Date().toISOString().split('T')[0]
+            }}
+          />
+        );
       case 'reports':
         return <AdvancedReports />;
       case 'settings':
